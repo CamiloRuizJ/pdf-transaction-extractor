@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Structured data from CRE PDFs — Fast{% endblock %}
+
+{% block content %}
+<section class="hero container">
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <h1>Turn CRE PDF reports into clean, structured data.</h1>
+      <p>Upload, draw regions, preview an Excel-like sheet, and export. Minimal, accurate, and fast—no manual retyping.</p>
+      <div class="cta-row">
+        <a href="/tool" class="btn btn-primary btn-lg">Open the Tool</a>
+        <a href="#how" class="btn btn-ghost btn-lg">See how it works</a>
+      </div>
+      <div class="trust-row">
+        <div class="kpi"><span class="kpi-num">10×</span><span class="kpi-label">faster extraction</span></div>
+        <div class="kpi"><span class="kpi-num">99.5%</span><span class="kpi-label">cell-level accuracy*</span></div>
+        <div class="kpi"><span class="kpi-num">CSV/XLSX</span><span class="kpi-label">one-click export</span></div>
+      </div>
+      <small class="muted">* With high-resolution PDFs and well-defined regions.</small>
+    </div>
+    <div class="hero-media">
+      <div class="mockup-card">
+        <div class="mockup-bar"></div>
+        <div class="mockup-body">
+          <div class="skeleton rows"></div>
+          <div class="skeleton grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="section container">
+  <h2>Built for commercial real estate workflows</h2>
+  <div class="feature-grid">
+    <article class="feature-card">
+      <h3>Smart region selection</h3>
+      <p>Zoom, pan, and draw precise regions. Name common fields like Address, Tenant, Lease dates, or create custom ones.</p>
+    </article>
+    <article class="feature-card">
+      <h3>Live Excel preview</h3>
+      <p>See your table populate as you mark regions. Reorder columns, edit cells, or add/remove fields on the fly.</p>
+    </article>
+    <article class="feature-card">
+      <h3>Accurate OCR</h3>
+      <p>High-quality OCR tuned for financial and property tables. Export to CSV/XLSX when you're happy.</p>
+    </article>
+    <article class="feature-card">
+      <h3>Team-ready</h3>
+      <p>Consistent results with saved region templates. Share a recipe across your portfolio.</p>
+    </article>
+  </div>
+</section>
+
+<section id="how" class="section container">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><strong>Upload</strong> a PDF (drag-and-drop).</li>
+    <li><strong>Zoom & draw</strong> regions for each field you need.</li>
+    <li><strong>Preview</strong> data in the Excel panel; tweak columns.</li>
+    <li><strong>Extract</strong> & export to CSV/XLSX.</li>
+  </ol>
+  <div class="center">
+    <a href="/tool" class="btn btn-primary btn-lg">Try it now</a>
+  </div>
+</section>
+
+<section class="section container subtle">
+  <div class="callout">
+    <h3>Works with offering memos, rent rolls, comps & broker reports</h3>
+    <p>Stop copy-pasting. Start analyzing.</p>
+  </div>
+</section>
+{% endblock %} 

@@ -1,0 +1,538 @@
+{% extends 'base.html' %}
+{% block title %}CRE PDF Extractor — AI-Powered Processing Tool{% endblock %}
+
+{% block head %}
+<meta name="description" content="AI-powered PDF extraction tool for commercial real estate documents with real-time processing and ChatGPT integration" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tool.css') }}" />
+{% endblock %}
+
+{% block content %}
+<!-- Enhanced Tool Header -->
+<section class="tool-hero">
+  <div class="container">
+    <div class="tool-header">
+      <div class="tool-title-section">
+        <h1 class="tool-title">
+          <span class="title-icon">🤖</span>
+          AI-Powered CRE PDF Extractor
+        </h1>
+        <p class="tool-subtitle">Extract structured data from commercial real estate documents with artificial intelligence</p>
+      </div>
+      
+      <div class="ai-status-panel" id="aiStatusPanel">
+        <div class="ai-status-item">
+          <span class="status-icon" id="aiStatusIcon">🔴</span>
+          <span class="status-text" id="aiStatusText">AI Ready</span>
+        </div>
+        <div class="ai-features-active" id="aiFeaturesActive" style="display: none;">
+          <span class="feature">Smart Detection</span>
+          <span class="feature">Data Validation</span>
+          <span class="feature">Quality Scoring</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="viewer" class="tool-workspace">
+  <div class="container-fluid">
+    <div class="workspace-grid">
+      
+      <!-- Main Processing Area -->
+      <div class="main-content">
+        
+        <!-- Enhanced Upload Section -->
+        <div class="upload-section enhanced" id="uploadSection">
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-icon animated">📄</div>
+            <div class="upload-text">
+              <h3>Upload Your CRE Document</h3>
+              <p>Drag and drop your PDF file here or click to browse</p>
+              <div class="supported-types">
+                <span class="type-badge">Offering Memos</span>
+                <span class="type-badge">Rent Rolls</span>
+                <span class="type-badge">Comp Sheets</span>
+              </div>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept=".pdf">
+            <button class="upload-btn enhanced" onclick="document.getElementById('fileInput').click()">
+              <span class="btn-icon">📁</span>
+              Choose PDF File
+            </button>
+            <div class="upload-restrictions">
+              Max file size: 16MB | Supported: PDF only
+            </div>
+          </div>
+        </div>
+
+        <!-- PDF Viewer Section with AI Enhancements -->
+        <div class="pdf-viewer enhanced" id="pdfViewer" style="display: none;">
+          
+          <!-- Enhanced Controls -->
+          <div class="pdf-controls enhanced">
+            <div class="controls-left">
+              <div class="zoom-controls">
+                <button class="btn-zoom" onclick="zoomOut()" title="Zoom Out (Ctrl + Scroll)">−</button>
+                <span class="zoom-level" id="zoomLevel">100%</span>
+                <button class="btn-zoom" onclick="zoomIn()" title="Zoom In (Ctrl + Scroll)">+</button>
+                <button class="btn-reset" onclick="resetZoom()" title="Reset Zoom">Reset</button>
+              </div>
+              
+              <div class="pan-controls">
+                <button class="btn-small btn-pan" onclick="togglePanMode()" id="panBtn" title="Toggle Pan Mode (or hold Space)">🖐️</button>
+              </div>
+            </div>
+            
+            <div class="controls-center">
+              <div class="page-navigation">
+                <button class="btn-nav" onclick="previousPage()" id="prevPageBtn" disabled>‹</button>
+                <span class="page-info">
+                  Page <span id="currentPageDisplay">1</span> of <span id="totalPagesDisplay">1</span>
+                </span>
+                <button class="btn-nav" onclick="nextPage()" id="nextPageBtn" disabled>›</button>
+              </div>
+            </div>
+            
+            <div class="controls-right">
+              <div class="ai-controls">
+                <button class="btn-ai" onclick="suggestRegions()" id="aiSuggestBtn" title="AI Region Suggestions">
+                  <span class="ai-icon">🤖</span>
+                  AI Suggest
+                </button>
+                <button class="btn-ai" onclick="validateData()" id="aiValidateBtn" title="AI Data Validation">
+                  <span class="ai-icon">✅</span>
+                  Validate
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- AI Processing Indicator -->
+          <div class="ai-processing-banner" id="aiProcessingBanner" style="display: none;">
+            <div class="processing-content">
+              <div class="processing-spinner"></div>
+              <span class="processing-text">AI analyzing document structure...</span>
+            </div>
+          </div>
+          
+          <div class="zoom-info enhanced">
+            <span class="info-icon">💡</span>
+            <span>Use +/- buttons to zoom, click pan button or hold Space to pan. AI suggestions available after upload!</span>
+          </div>
+          
+          <div class="canvas-container enhanced" id="canvasContainer">
+            <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
+            
+            <!-- AI Suggestion Overlay -->
+            <div class="ai-suggestions-overlay" id="aiSuggestionsOverlay"></div>
+            
+            <!-- Quality Score Overlay -->
+            <div class="quality-score-overlay" id="qualityScoreOverlay">
+              <div class="quality-indicator">
+                <span class="quality-label">Extraction Quality</span>
+                <div class="quality-bar">
+                  <div class="quality-fill" id="qualityFill" style="width: 0%"></div>
+                </div>
+                <span class="quality-score" id="qualityScore">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="loading enhanced" id="loading">
+            <div class="loading-content">
+              <div class="spinner enhanced"></div>
+              <div class="loading-text">Processing PDF with AI...</div>
+              <div class="loading-steps">
+                <div class="step active" id="step1">📄 Reading document</div>
+                <div class="step" id="step2">🤖 AI analysis</div>
+                <div class="step" id="step3">✨ Preparing interface</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enhanced Excel Preview Section -->
+        <div class="excel-preview-section enhanced" id="excelPreviewSection">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="title-icon">📊</span>
+              Live Data Preview
+              <span class="ai-badge" id="aiProcessingBadge" style="display: none;">AI Processing</span>
+            </div>
+            <div class="preview-controls">
+              <button class="preview-toggle active" id="previewToggle" onclick="togglePreview()">Hide Preview</button>
+              <button class="btn-ai-enhance" onclick="enhanceWithAI()" id="aiEnhanceBtn" title="Enhance data with AI">
+                <span class="ai-icon">✨</span>
+                AI Enhance
+              </button>
+            </div>
+          </div>
+          
+          <div class="column-controls enhanced" id="columnControls" style="display: none;">
+            <div class="controls-group">
+              <button class="column-control-btn" onclick="addColumn()" type="button">
+                <span class="btn-icon">➕</span>
+                Add Column
+              </button>
+              <button class="column-control-btn" onclick="removeColumn()" type="button">
+                <span class="btn-icon">➖</span>
+                Remove Column
+              </button>
+              <button class="column-control-btn" onclick="clearAllData()" type="button">
+                <span class="btn-icon">🗑️</span>
+                Clear Data
+              </button>
+              <button class="column-control-btn" onclick="resetExcelPreview()" type="button">
+                <span class="btn-icon">🔄</span>
+                Reset
+              </button>
+            </div>
+            <div class="controls-help">
+              <span class="help-icon">💡</span>
+              <span>Click cells to edit, drag headers to reorder, use AI to enhance data quality</span>
+            </div>
+          </div>
+          
+          <div class="excel-preview-container enhanced" id="excelPreviewContainer">
+            <div class="excel-preview" id="excelPreview">
+              <div class="preview-placeholder">
+                <div class="placeholder-icon">📊</div>
+                <div class="placeholder-title">AI-Enhanced Data Preview</div>
+                <div class="placeholder-subtitle">
+                  Your extracted data will appear here in real-time<br>
+                  with AI-powered quality validation and enhancement
+                </div>
+                <div class="placeholder-features">
+                  <span class="feature">Real-time validation</span>
+                  <span class="feature">Smart formatting</span>
+                  <span class="feature">Quality scoring</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enhanced Data Extraction Section -->
+        <div class="data-extraction-section enhanced" id="dataExtractionSection" style="display: none;">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="title-icon">⚡</span>
+              Data Extraction & Export
+            </div>
+          </div>
+          
+          <div class="extraction-controls">
+            <div class="action-buttons enhanced">
+              <button class="btn btn-success enhanced" id="extractDataBtn" disabled>
+                <span class="btn-icon">🚀</span>
+                Extract Data
+              </button>
+              <button class="btn btn-info" id="testOcrBtn" onclick="testOcr()">
+                <span class="btn-icon">🔍</span>
+                Test OCR
+              </button>
+              <button class="btn btn-ai" id="aiAnalyzeBtn" onclick="analyzeWithAI()">
+                <span class="btn-icon">🤖</span>
+                AI Analyze
+              </button>
+              <button class="btn btn-danger" id="clearSessionBtn">
+                <span class="btn-icon">🗑️</span>
+                Clear Session
+              </button>
+            </div>
+            
+            <div class="extraction-options">
+              <div class="option-group">
+                <label class="option-label">
+                  <input type="checkbox" id="aiEnhancementOption" checked>
+                  <span class="checkmark"></span>
+                  Enable AI Enhancement
+                </label>
+                <span class="option-help">Use ChatGPT for data validation and enhancement</span>
+              </div>
+              
+              <div class="option-group">
+                <label class="option-label">
+                  <input type="checkbox" id="qualityScoringOption" checked>
+                  <span class="checkmark"></span>
+                  Quality Scoring
+                </label>
+                <span class="option-help">Show confidence scores for extracted data</span>
+              </div>
+            </div>
+          </div>
+          
+          <div id="extractionStatus" class="extraction-status"></div>
+          
+          <!-- AI Insights Panel -->
+          <div class="ai-insights-panel" id="aiInsightsPanel" style="display: none;">
+            <div class="insights-header">
+              <span class="insights-icon">🧠</span>
+              <span class="insights-title">AI Insights</span>
+            </div>
+            <div class="insights-content" id="aiInsightsContent">
+              <!-- AI-generated insights will appear here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enhanced Control Panel -->
+      <div class="control-panel enhanced">
+        
+        <!-- File Information Section -->
+        <div class="section file-info-section">
+          <div class="section-title">
+            <span class="title-icon">📄</span>
+            Document Information
+          </div>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">File Name:</div>
+              <div class="info-value" id="fileName">No file selected</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Pages:</div>
+              <div class="info-value" id="pageCount">-</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Current Page:</div>
+              <div class="info-value" id="currentPage">-</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">AI Status:</div>
+              <div class="info-value ai-status" id="aiStatus">
+                <span class="status-dot offline"></span>
+                <span>Waiting</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Enhanced Region Management -->
+        <div class="section region-section">
+          <div class="section-title">
+            <span class="title-icon">🎯</span>
+            Extraction Regions
+            <button class="btn-help" onclick="showRegionHelp()" title="How to use regions">?</button>
+          </div>
+          
+          <div class="region-stats" id="regionStats" style="display: none;">
+            <div class="stat-item">
+              <span class="stat-number" id="regionCount">0</span>
+              <span class="stat-label">Regions</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number" id="aiSuggestions">0</span>
+              <span class="stat-label">AI Suggestions</span>
+            </div>
+          </div>
+          
+          <div class="region-list enhanced" id="regionList">
+            <div class="region-placeholder">
+              <div class="placeholder-icon">🎯</div>
+              <div class="placeholder-text">No regions defined yet</div>
+              <div class="placeholder-help">Draw regions on the PDF or use AI suggestions</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons Section -->
+        <div class="section actions-section">
+          <div class="action-buttons vertical">
+            <button class="btn btn-primary enhanced" id="saveRegionsBtn" disabled>
+              <span class="btn-icon">💾</span>
+              Save Regions
+            </button>
+            <button class="btn btn-warning" id="clearRegionsBtn" disabled>
+              <span class="btn-icon">🗑️</span>
+              Clear All Regions
+            </button>
+            <button class="btn btn-ai" id="exportTemplateBtn" onclick="exportTemplate()" disabled>
+              <span class="btn-icon">📋</span>
+              Export Template
+            </button>
+          </div>
+        </div>
+
+        <!-- AI Suggestions Panel -->
+        <div class="section ai-suggestions-section" id="aiSuggestionsSection" style="display: none;">
+          <div class="section-title">
+            <span class="title-icon">🤖</span>
+            AI Suggestions
+          </div>
+          <div class="ai-suggestions-list" id="aiSuggestionsList">
+            <!-- AI suggestions will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Enhanced Region Name Modal -->
+<div id="regionModal" class="modal enhanced">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span class="title-icon">🏷️</span>
+        Name This Region
+      </div>
+      <span class="close" onclick="closeRegionModal()">&times;</span>
+    </div>
+    
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Choose from common CRE fields or type custom:</label>
+        <select id="regionNameSelect" class="form-input enhanced" onchange="updateRegionNameInput()">
+          <option value="">-- Select a common field --</option>
+          <optgroup label="Property Information">
+            <option value="Property Address">Property Address</option>
+            <option value="Property Name">Property Name</option>
+            <option value="Property Type">Property Type</option>
+            <option value="Building Class">Building Class</option>
+            <option value="Year Built">Year Built</option>
+            <option value="Total Square Feet">Total Square Feet</option>
+            <option value="Lot Size">Lot Size</option>
+            <option value="Floor Count">Floor Count</option>
+            <option value="Parking Spaces">Parking Spaces</option>
+            <option value="Zoning">Zoning</option>
+          </optgroup>
+          <optgroup label="Lease Information">
+            <option value="Tenant Name">Tenant Name</option>
+            <option value="Lease Start Date">Lease Start Date</option>
+            <option value="Lease End Date">Lease End Date</option>
+            <option value="Lease Term">Lease Term</option>
+            <option value="Leased Square Feet">Leased Square Feet</option>
+            <option value="Base Rent">Base Rent</option>
+            <option value="Rent per SF">Rent per SF</option>
+            <option value="Escalations">Escalations</option>
+            <option value="Security Deposit">Security Deposit</option>
+          </optgroup>
+          <optgroup label="Financial Data">
+            <option value="Total Price">Total Price</option>
+            <option value="Price per SF">Price per SF</option>
+            <option value="Cap Rate">Cap Rate</option>
+            <option value="NOI">NOI (Net Operating Income)</option>
+            <option value="Gross Income">Gross Income</option>
+            <option value="Operating Expenses">Operating Expenses</option>
+            <option value="Property Tax">Property Tax</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Occupancy Rate">Occupancy Rate</option>
+          </optgroup>
+          <optgroup label="Transaction Details">
+            <option value="Transaction Date">Transaction Date</option>
+            <option value="Broker Name">Broker Name</option>
+            <option value="Buyer Name">Buyer Name</option>
+            <option value="Seller Name">Seller Name</option>
+            <option value="Closing Date">Closing Date</option>
+          </optgroup>
+          <option value="Custom Field">-- Type Custom Field --</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Field Name:</label>
+        <input type="text" id="regionNameInput" class="form-input enhanced" placeholder="e.g., Address, Leased SF, Base Rent">
+        <div class="field-help" id="fieldHelp"></div>
+      </div>
+      
+      <!-- AI-powered field suggestions -->
+      <div class="ai-field-suggestions" id="aiFieldSuggestions" style="display: none;">
+        <div class="suggestions-header">
+          <span class="ai-icon">🤖</span>
+          <span>AI Suggested Field Names:</span>
+        </div>
+        <div class="suggestions-list" id="aiSuggestionsList"></div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="saveRegionName()">
+          <span class="btn-icon">💾</span>
+          Save Region
+        </button>
+        <button class="btn btn-secondary" onclick="closeRegionModal()">
+          <span class="btn-icon">❌</span>
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI Processing Modal -->
+<div id="aiProcessingModal" class="modal ai-modal">
+  <div class="modal-content">
+    <div class="ai-processing-content">
+      <div class="ai-processing-animation">
+        <div class="ai-brain">🤖</div>
+        <div class="processing-waves">
+          <div class="wave"></div>
+          <div class="wave"></div>
+          <div class="wave"></div>
+        </div>
+      </div>
+      <div class="ai-processing-text">
+        <h3>AI is analyzing your document...</h3>
+        <p id="aiProcessingStep">Initializing AI processing...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Core JavaScript Files -->
+<script src="{{ url_for('static', filename='js/pdf-viewer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/region-management.js') }}"></script>
+<script src="{{ url_for('static', filename='js/excel-preview.js') }}"></script>
+<script src="{{ url_for('static', filename='js/data-extraction.js') }}"></script>
+<script src="{{ url_for('static', filename='js/keyboard-shortcuts.js') }}"></script>
+
+<!-- Enhanced AI Features -->
+<script src="{{ url_for('static', filename='js/ai-integration.js') }}"></script>
+<script src="{{ url_for('static', filename='js/security-client.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quality-scoring.js') }}"></script>
+
+<script>
+// Initialize enhanced tool features
+document.addEventListener('DOMContentLoaded', function() {
+  initializeAIFeatures();
+  initializeSecurityClient();
+  initializeQualityScoring();
+  setupEnhancedUpload();
+  checkAIStatus();
+});
+
+// Check AI status on load
+async function checkAIStatus() {
+  try {
+    const response = await fetch('/api/ai/status');
+    const data = await response.json();
+    updateAIStatus(data.enabled, data.model);
+  } catch (error) {
+    console.log('AI features not available');
+    updateAIStatus(false);
+  }
+}
+
+function updateAIStatus(enabled, model = null) {
+  const statusIcon = document.getElementById('aiStatusIcon');
+  const statusText = document.getElementById('aiStatusText');
+  const featuresActive = document.getElementById('aiFeaturesActive');
+  
+  if (enabled) {
+    statusIcon.textContent = '🟢';
+    statusText.textContent = model ? `AI Active (${model})` : 'AI Active';
+    featuresActive.style.display = 'flex';
+  } else {
+    statusIcon.textContent = '🔴';
+    statusText.textContent = 'AI Unavailable';
+    featuresActive.style.display = 'none';
+  }
+}
+</script>
+{% endblock %}
