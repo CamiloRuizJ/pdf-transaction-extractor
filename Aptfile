@@ -1,4 +1,4 @@
 tesseract-ocr
-tesseract-ocr-eng
 poppler-utils
+libtesseract-dev
 libpoppler-cpp-dev

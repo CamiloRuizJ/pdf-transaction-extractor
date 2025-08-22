@@ -1,22 +1,38 @@
 services:
   - type: web
-    name: pdf-transaction-extractor
+    name: pdf-transaction-extractor-enhanced
     env: python
     plan: starter
-    buildCommand: pip install -r requirements.txt
-    startCommand: python wsgi.py
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --workers 2 --timeout 120
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.16
+        value: 3.11.7
       - key: FLASK_ENV
         value: production
-      - key: FLASK_DEBUG
-        value: false
-      - key: FLASK_HOST
-        value: 0.0.0.0
-      - key: FLASK_PORT
-        value: 10000
-      - key: UPLOAD_FOLDER
-        value: uploads
-      - key: TEMP_FOLDER
-        value: temp
+      - key: V2_ENABLED
+        value: true
+      - key: DOCUMENT_CLASSIFICATION_ENABLED
+        value: true
+      - key: QUALITY_SCORING_ENABLED
+        value: true
+      - key: SMART_REGION_SUGGESTION
+        value: true
+      - key: DATABASE_URL
+        value: sqlite:///pdf_converter_enhanced.db
+      - key: REDIS_URL
+        value: redis://redis:6379/0
+      - key: OPENAI_API_KEY
+        sync: false
+    healthCheckPath: /health
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 1
+
+  - type: redis
+    name: redis
+    ipAllowList: []
+    plan: free
