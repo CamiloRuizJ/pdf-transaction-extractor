@@ -149,8 +149,29 @@ def test_ai():
                 # Try alternative import pattern
                 import openai
                 
+                # Clear requests session to avoid proxy issues
+                if hasattr(openai, '_session'):
+                    openai._session = None
+                if hasattr(openai, 'session'):
+                    openai.session = None
+                
+                # Override any requests configuration
+                try:
+                    import requests
+                    # Create a clean session without proxies
+                    clean_session = requests.Session()
+                    clean_session.proxies = {}
+                    if hasattr(openai, '_session'):
+                        openai._session = clean_session
+                except ImportError:
+                    pass
+                
+                print(f"OpenAI imported successfully. Version: {getattr(openai, '__version__', 'unknown')}")
+                
                 # Use old style API (0.28.1)
                 openai.api_key = api_key
+                print("API key set successfully")
+                
                 response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[
