@@ -8,9 +8,18 @@
       "runtime": "@vercel/python@5.0.0",
       "maxDuration": 300,
       "memory": 1024
+    },
+    "api/test_minimal_openai.py": {
+      "runtime": "@vercel/python@5.0.0",
+      "maxDuration": 30,
+      "memory": 512
     }
   },
   "rewrites": [
+    {
+      "source": "/api/test-minimal-openai",
+      "destination": "/api/test_minimal_openai.py"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/app.py"
