@@ -131,32 +131,71 @@ def test_ai():
         if not api_key:
             return jsonify({'error': 'OpenAI API key not configured'}), 500
             
-        # Import OpenAI here to avoid import errors if not available  
+        # Try different OpenAI import approaches to bypass proxy issues
         try:
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
+            # Clear proxy variables completely from environment
+            import os
+            proxy_env_vars = [
+                'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
+                'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy'
+            ]
+            old_env = {}
+            for var in proxy_env_vars:
+                if var in os.environ:
+                    old_env[var] = os.environ[var]
+                    del os.environ[var]
             
-            # Test with real estate context
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a real estate document processing expert."},
-                    {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
-                ],
-                max_tokens=50,
-                temperature=0.1
-            )
-            
-            return jsonify({
-                'success': True,
-                'response': response.choices[0].message.content,
-                'model': response.model,
-                'usage': {
-                    'prompt_tokens': response.usage.prompt_tokens,
-                    'completion_tokens': response.usage.completion_tokens,
-                    'total_tokens': response.usage.total_tokens
-                } if hasattr(response, 'usage') else None
-            })
+            try:
+                # Try alternative import pattern
+                import openai
+                
+                # For older versions, try different client initialization
+                if hasattr(openai, 'OpenAI'):
+                    # New style (v1.0+)
+                    client = openai.OpenAI(api_key=api_key)
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are a real estate document processing expert."},
+                            {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
+                        ],
+                        max_tokens=50,
+                        temperature=0.1
+                    )
+                    response_text = response.choices[0].message.content
+                    model = response.model
+                    usage = response.usage if hasattr(response, 'usage') else None
+                else:
+                    # Old style (pre-v1.0) - fallback
+                    openai.api_key = api_key
+                    response = openai.ChatCompletion.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are a real estate document processing expert."},
+                            {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
+                        ],
+                        max_tokens=50,
+                        temperature=0.1
+                    )
+                    response_text = response['choices'][0]['message']['content']
+                    model = response.get('model', 'gpt-3.5-turbo')
+                    usage = response.get('usage')
+                
+                return jsonify({
+                    'success': True,
+                    'response': response_text,
+                    'model': model,
+                    'usage': {
+                        'prompt_tokens': usage.prompt_tokens if usage else None,
+                        'completion_tokens': usage.completion_tokens if usage else None,
+                        'total_tokens': usage.total_tokens if usage else None
+                    } if usage else None
+                })
+                
+            finally:
+                # Restore environment variables
+                for var, value in old_env.items():
+                    os.environ[var] = value
             
         except ImportError as e:
             return jsonify({'error': f'OpenAI library not available: {str(e)}'}), 500
@@ -484,8 +523,35 @@ class AIServiceServerless:
         
         if self.api_key:
             try:
-                from openai import OpenAI
-                self.client = OpenAI(api_key=self.api_key)
+                # Clear proxy variables to avoid conflicts
+                proxy_env_vars = [
+                    'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
+                    'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy'
+                ]
+                old_env = {}
+                for var in proxy_env_vars:
+                    if var in os.environ:
+                        old_env[var] = os.environ[var]
+                        del os.environ[var]
+                
+                try:
+                    import openai
+                    
+                    # Try new style initialization
+                    if hasattr(openai, 'OpenAI'):
+                        self.client = openai.OpenAI(api_key=self.api_key)
+                        self._is_new_style = True
+                    else:
+                        # Fallback to old style
+                        openai.api_key = self.api_key
+                        self.client = openai
+                        self._is_new_style = False
+                        
+                finally:
+                    # Restore environment variables
+                    for var, value in old_env.items():
+                        os.environ[var] = value
+                        
             except ImportError:
                 pass
     
@@ -493,15 +559,25 @@ class AIServiceServerless:
         """Make OpenAI API request"""
         if not self.client:
             raise Exception("OpenAI client not available")
-            
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature or self.temperature,
-            max_tokens=max_tokens
-        )
         
-        return response.choices[0].message.content
+        if getattr(self, '_is_new_style', True):
+            # New style (v1.0+)
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature or self.temperature,
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content
+        else:
+            # Old style (pre-v1.0)
+            response = self.client.ChatCompletion.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature or self.temperature,
+                max_tokens=max_tokens
+            )
+            return response['choices'][0]['message']['content']
     
     def classify_document_content(self, text: str) -> Dict[str, Any]:
         """Classify document content using AI"""
