@@ -1010,11 +1010,10 @@ class AIServiceServerless:
                 # For OpenAI v1.0+ (new API)
                 if hasattr(openai, 'OpenAI'):
                     try:
-                        # Initialize new client with only supported parameters
-                        # Remove any potential problematic parameters like 'proxies'
+                        # Initialize new client with minimal parameters to avoid compatibility issues
                         self.client = openai.OpenAI(
-                            api_key=self.api_key,
-                            timeout=30.0,  # Add reasonable timeout
+                            api_key=self.api_key
+                            # Remove all optional parameters that might cause issues
                         )
                         self.client_version = "new"
                         print(f"OpenAI client initialized successfully (v1.0+ API)")
