@@ -473,34 +473,10 @@ class AIServiceServerless:
         self.temperature = temperature
         self.client = None
         
-        if self.api_key:
-            try:
-                # Clear proxy variables to avoid conflicts
-                proxy_env_vars = [
-                    'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY',
-                    'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy'
-                ]
-                old_env = {}
-                for var in proxy_env_vars:
-                    if var in os.environ:
-                        old_env[var] = os.environ[var]
-                        del os.environ[var]
-                
-                try:
-                    import openai
-                    
-                    # Use old style API (0.28.1)
-                    openai.api_key = self.api_key
-                    self.client = openai
-                    self._is_new_style = False
-                        
-                finally:
-                    # Restore environment variables
-                    for var, value in old_env.items():
-                        os.environ[var] = value
-                        
-            except ImportError:
-                pass
+        # For now, disable OpenAI initialization due to persistent proxy issues
+        # Use fallback service instead
+        self.client = None
+        print("OpenAI client initialization disabled - using fallback service")
     
     def _make_openai_request(self, messages, temperature=None, max_tokens=1500):
         """Make OpenAI API request using old style API (0.28.1)"""
