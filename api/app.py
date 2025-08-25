@@ -183,7 +183,22 @@ def test_ai():
         except ImportError as e:
             return jsonify({'error': f'OpenAI library not available: {str(e)}'}), 500
         except Exception as e:
-            return jsonify({'error': f'OpenAI API error: {str(e)}'}), 500
+            import traceback
+            error_details = {
+                'error': f'OpenAI API error: {str(e)}',
+                'error_type': type(e).__name__,
+                'traceback': traceback.format_exc(),
+                'openai_version': None
+            }
+            
+            # Try to get OpenAI version for debugging
+            try:
+                import openai
+                error_details['openai_version'] = getattr(openai, '__version__', 'unknown')
+            except:
+                pass
+                
+            return jsonify(error_details), 500
             
     except Exception as e:
         return jsonify({'error': f'Test failed: {str(e)}'}), 500
