@@ -67,9 +67,19 @@ limiter = Limiter(
     strategy="fixed-window"
 )
 
-# Setup security logging
-logging.basicConfig(level=logging.INFO)
+# Setup comprehensive logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('/tmp/app.log', mode='a') if os.access('/tmp', os.W_OK) else logging.NullHandler()
+    ]
+)
+
 security_logger = logging.getLogger('security')
+upload_logger = logging.getLogger('upload')
+vercel_logger = logging.getLogger('vercel')
 
 # Security event logging
 def log_security_event(event_type: str, details: Dict[str, Any]):
@@ -356,11 +366,41 @@ def test_ai():
             'timestamp': datetime.utcnow().isoformat()
         }), 500
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', 'OPTIONS'])
 @limiter.limit("10 per minute")  # SECURITY: Rate limit file uploads
 def upload_file():
     """Handle file upload and initiate processing - SECURITY: Enhanced validation"""
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 200
+    
     try:
+        # Log request details for debugging
+        content_length = request.headers.get('Content-Length', 'unknown')
+        content_type = request.headers.get('Content-Type', 'unknown')
+        app.logger.info(f"Upload request - Content-Length: {content_length}, Content-Type: {content_type}")
+        
+        # Check content length before processing
+        if content_length != 'unknown':
+            try:
+                request_size = int(content_length)
+                max_size = app.config['MAX_CONTENT_LENGTH']
+                if request_size > max_size:
+                    max_size_mb = max_size // (1024*1024)
+                    actual_size_mb = request_size / (1024*1024)
+                    app.logger.warning(f"Request size {actual_size_mb:.1f}MB exceeds limit {max_size_mb}MB")
+                    return jsonify({
+                        'success': False,
+                        'error': f'Upload size {actual_size_mb:.1f}MB exceeds maximum allowed size of {max_size_mb}MB',
+                        'error_type': 'file_size_exceeded',
+                        'max_size_mb': max_size_mb,
+                        'actual_size_mb': round(actual_size_mb, 1),
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'suggestion': 'Please reduce your PDF file size or split it into smaller files'
+                    }), 413
+            except ValueError:
+                app.logger.warning(f"Invalid Content-Length header: {content_length}")
+        
         # Check if file is provided
         if 'file' not in request.files:
             return handle_error('No file provided', 400)
@@ -378,10 +418,21 @@ def upload_file():
         file_size = file.tell()
         file.seek(0)  # Reset to beginning
         
+        app.logger.info(f"File size determined: {file_size} bytes ({file_size / (1024*1024):.1f}MB)")
+        
         if file_size > app.config['MAX_CONTENT_LENGTH']:
             max_size_mb = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
             actual_size_mb = file_size / (1024*1024)
-            return handle_error(f'File too large. File size: {actual_size_mb:.1f}MB. Maximum allowed: {max_size_mb}MB. Please use a smaller PDF file.', 413)
+            app.logger.warning(f"File size {actual_size_mb:.1f}MB exceeds Flask limit {max_size_mb}MB")
+            return jsonify({
+                'success': False,
+                'error': f'File size {actual_size_mb:.1f}MB exceeds maximum allowed size of {max_size_mb}MB',
+                'error_type': 'file_size_exceeded',
+                'max_size_mb': max_size_mb,
+                'actual_size_mb': round(actual_size_mb, 1),
+                'timestamp': datetime.utcnow().isoformat(),
+                'suggestion': 'Please reduce your PDF file size or use the chunked upload feature'
+            }), 413
         
         if file_size == 0:
             return handle_error('Empty file not allowed', 400)
@@ -799,6 +850,157 @@ def generate_report():
     except Exception as e:
         return handle_error(f'Report generation failed: {str(e)}', 500)
 
+@app.route('/check-file-size', methods=['POST'])
+def check_file_size():
+    """Check if file size is acceptable before upload"""
+    try:
+        data = request.get_json()
+        if not data or 'file_size' not in data:
+            return handle_error('No file_size provided', 400)
+            
+        file_size = data['file_size']
+        max_size = app.config['MAX_CONTENT_LENGTH']
+        max_size_mb = max_size // (1024*1024)
+        actual_size_mb = file_size / (1024*1024)
+        
+        can_upload = file_size <= max_size
+        vercel_limit_warning = file_size > 25 * 1024 * 1024  # Warn if > 25MB
+        
+        return jsonify({
+            'success': True,
+            'can_upload': can_upload,
+            'file_size_mb': round(actual_size_mb, 1),
+            'max_size_mb': max_size_mb,
+            'vercel_warning': vercel_limit_warning,
+            'recommendation': (
+                'File size acceptable' if can_upload and not vercel_limit_warning
+                else 'File may hit Vercel platform limits (>25MB)' if vercel_limit_warning and can_upload
+                else 'File too large - use chunked upload'
+            ),
+            'alternatives': {
+                'chunked_upload': not can_upload,
+                'compression_suggested': vercel_limit_warning,
+                'direct_cloud_upload': not can_upload
+            }
+        })
+        
+    except Exception as e:
+        return handle_error(f'File size check failed: {str(e)}', 500)
+
+@app.route('/upload-chunk', methods=['POST'])
+@limiter.limit("20 per minute")
+def upload_chunk():
+    """Handle chunked file uploads for large files"""
+    try:
+        # Get chunk metadata
+        chunk_data = request.form.get('chunk_data')
+        if not chunk_data:
+            return handle_error('No chunk metadata provided', 400)
+            
+        try:
+            chunk_info = json.loads(chunk_data)
+        except json.JSONDecodeError:
+            return handle_error('Invalid chunk metadata format', 400)
+            
+        chunk_number = chunk_info.get('chunk_number', 0)
+        total_chunks = chunk_info.get('total_chunks', 1)
+        file_id = chunk_info.get('file_id')
+        original_filename = chunk_info.get('original_filename', 'unknown.pdf')
+        
+        if not file_id:
+            return handle_error('No file_id provided in chunk metadata', 400)
+            
+        # Get chunk file
+        if 'chunk' not in request.files:
+            return handle_error('No chunk file provided', 400)
+            
+        chunk_file = request.files['chunk']
+        if chunk_file.filename == '':
+            return handle_error('No chunk file selected', 400)
+        
+        # Create chunks directory
+        chunks_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'chunks', file_id)
+        os.makedirs(chunks_dir, exist_ok=True)
+        
+        # Save chunk
+        chunk_filename = f"chunk_{chunk_number:04d}.part"
+        chunk_path = os.path.join(chunks_dir, chunk_filename)
+        chunk_file.save(chunk_path)
+        
+        app.logger.info(f"Saved chunk {chunk_number + 1}/{total_chunks} for file {file_id}")
+        
+        # Check if all chunks are uploaded
+        uploaded_chunks = len([f for f in os.listdir(chunks_dir) if f.startswith('chunk_')])
+        
+        if uploaded_chunks == total_chunks:
+            # Reassemble file
+            try:
+                final_filename = f"{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{secure_filename(original_filename)}"
+                final_path = os.path.join(app.config['UPLOAD_FOLDER'], final_filename)
+                
+                with open(final_path, 'wb') as final_file:
+                    for i in range(total_chunks):
+                        chunk_path = os.path.join(chunks_dir, f"chunk_{i:04d}.part")
+                        if os.path.exists(chunk_path):
+                            with open(chunk_path, 'rb') as chunk:
+                                final_file.write(chunk.read())
+                
+                # Clean up chunks
+                for i in range(total_chunks):
+                    chunk_path = os.path.join(chunks_dir, f"chunk_{i:04d}.part")
+                    if os.path.exists(chunk_path):
+                        os.remove(chunk_path)
+                os.rmdir(chunks_dir)
+                
+                # Validate assembled file
+                if not validate_pdf_file(final_path):
+                    os.remove(final_path)
+                    return handle_error('Reassembled file is not a valid PDF', 400)
+                
+                file_size = os.path.getsize(final_path)
+                file_hash = calculate_file_hash(final_path)
+                
+                app.logger.info(f"Successfully reassembled file {final_filename} ({file_size} bytes)")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'File uploaded and reassembled successfully',
+                    'file_id': final_filename,
+                    'original_filename': original_filename,
+                    'file_size': file_size,
+                    'file_hash': file_hash[:16],
+                    'chunks_processed': total_chunks,
+                    'upload_timestamp': datetime.utcnow().isoformat(),
+                    'next_step': 'process'
+                })
+                
+            except Exception as reassembly_error:
+                # Clean up on failure
+                try:
+                    if os.path.exists(final_path):
+                        os.remove(final_path)
+                    for i in range(total_chunks):
+                        chunk_path = os.path.join(chunks_dir, f"chunk_{i:04d}.part")
+                        if os.path.exists(chunk_path):
+                            os.remove(chunk_path)
+                    if os.path.exists(chunks_dir):
+                        os.rmdir(chunks_dir)
+                except:
+                    pass
+                raise reassembly_error
+        else:
+            return jsonify({
+                'success': True,
+                'message': f'Chunk {chunk_number + 1}/{total_chunks} uploaded successfully',
+                'chunks_received': uploaded_chunks,
+                'chunks_remaining': total_chunks - uploaded_chunks,
+                'next_chunk': uploaded_chunks,
+                'upload_complete': False
+            })
+            
+    except Exception as e:
+        return handle_error(f'Chunked upload failed: {str(e)}', 500)
+
 @app.route('/export-excel', methods=['POST'])
 def export_excel():
     """Export to Excel format"""
@@ -836,6 +1038,100 @@ def download_file(filename):
         }), 501
     except Exception as e:
         return handle_error(f'File download failed: {str(e)}', 500)
+
+@app.route('/debug/upload-limits', methods=['GET'])
+def debug_upload_limits():
+    """Debug endpoint to check upload limits and configuration"""
+    try:
+        # Get system limits
+        max_content_length = app.config.get('MAX_CONTENT_LENGTH', 0)
+        max_content_mb = max_content_length // (1024*1024)
+        
+        # Check environment variables that might affect uploads
+        env_info = {
+            'FLASK_ENV': os.environ.get('FLASK_ENV', 'not_set'),
+            'VERCEL': os.environ.get('VERCEL', 'not_set'),
+            'VERCEL_ENV': os.environ.get('VERCEL_ENV', 'not_set'),
+            'PYTHONPATH': os.environ.get('PYTHONPATH', 'not_set')
+        }
+        
+        # Check upload directory
+        upload_dir_info = {
+            'path': app.config.get('UPLOAD_FOLDER', 'not_set'),
+            'exists': os.path.exists(app.config.get('UPLOAD_FOLDER', '')),
+            'writable': os.access(app.config.get('UPLOAD_FOLDER', ''), os.W_OK) if os.path.exists(app.config.get('UPLOAD_FOLDER', '')) else False
+        }
+        
+        # Platform detection
+        platform_info = {
+            'is_vercel': bool(os.environ.get('VERCEL')),
+            'is_development': app.config.get('FLASK_ENV') == 'development',
+            'python_version': sys.version,
+            'working_directory': os.getcwd()
+        }
+        
+        return jsonify({
+            'success': True,
+            'limits': {
+                'max_content_length_bytes': max_content_length,
+                'max_content_length_mb': max_content_mb,
+                'vercel_recommended_max_mb': 25,
+                'chunk_size_recommended_mb': 10
+            },
+            'environment': env_info,
+            'upload_directory': upload_dir_info,
+            'platform': platform_info,
+            'recommendations': {
+                'use_chunked_upload_if_over_mb': 25,
+                'compress_pdf_if_over_mb': 30,
+                'alternative_upload_methods': [
+                    'chunked upload via /api/upload-chunk',
+                    'direct cloud storage upload',
+                    'file compression before upload'
+                ]
+            },
+            'endpoints': {
+                'check_file_size': '/api/check-file-size',
+                'chunked_upload': '/api/upload-chunk',
+                'standard_upload': '/api/upload',
+                'debug_info': '/api/debug/upload-limits'
+            },
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        return handle_error(f'Debug info generation failed: {str(e)}', 500)
+
+@app.route('/debug/request-info', methods=['POST', 'GET'])
+def debug_request_info():
+    """Debug endpoint to analyze incoming requests"""
+    try:
+        request_info = {
+            'method': request.method,
+            'url': request.url,
+            'headers': dict(request.headers),
+            'content_length': request.headers.get('Content-Length', 'not_provided'),
+            'content_type': request.headers.get('Content-Type', 'not_provided'),
+            'remote_addr': request.remote_addr,
+            'user_agent': request.headers.get('User-Agent', 'not_provided')[:200],  # Truncate long user agents
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        # Log the request for debugging
+        vercel_logger.info(f"Debug request analysis: {json.dumps(request_info, indent=2)}")
+        
+        return jsonify({
+            'success': True,
+            'request_analysis': request_info,
+            'platform_limits': {
+                'vercel_body_limit_estimated': '25-50MB',
+                'flask_configured_limit_mb': app.config['MAX_CONTENT_LENGTH'] // (1024*1024),
+                'recommendation': 'Use chunked upload for files > 25MB'
+            }
+        })
+        
+    except Exception as e:
+        return handle_error(f'Request analysis failed: {str(e)}', 500)
 
 # AI Service Functions
 def get_ai_service():
@@ -1461,7 +1757,27 @@ def internal_error(error):
 
 @app.errorhandler(413)
 def too_large(error):
-    return jsonify({'error': 'File too large', 'success': False}), 413
+    """Enhanced 413 error handler with detailed information"""
+    max_size_mb = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
+    
+    # Log the 413 error for debugging
+    app.logger.error(f"413 Request Entity Too Large - Max allowed: {max_size_mb}MB")
+    app.logger.error(f"Request headers: {dict(request.headers) if request else 'No request context'}")
+    
+    return jsonify({
+        'success': False,
+        'error': f'Request too large. Maximum file size allowed is {max_size_mb}MB.',
+        'error_type': 'request_too_large',
+        'max_size_mb': max_size_mb,
+        'timestamp': datetime.utcnow().isoformat(),
+        'suggestion': 'Please reduce your file size or use the chunked upload feature.',
+        'vercel_limit_info': 'This error may be caused by Vercel platform limits. For files larger than 25MB, consider using direct cloud storage uploads.',
+        'support_info': {
+            'chunked_upload': '/api/upload-chunk',
+            'file_size_check': '/api/check-file-size',
+            'max_recommended_size': '25MB for optimal performance'
+        }
+    }), 413
 
 # Serverless handler for Vercel
 def handler(request, context):
