@@ -134,86 +134,50 @@ def test_ai():
         # Import OpenAI here to avoid import errors if not available
         try:
             from openai import OpenAI
-            # Initialize OpenAI client with only supported parameters
-            client = OpenAI(
-                api_key=api_key,
-                timeout=60.0,
-                max_retries=2
-            )
             
-            # Test with real estate context
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a real estate document processing expert."},
-                    {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
-                ],
-                max_tokens=50,
-                temperature=0.1
-            )
+            # Clear all proxy-related environment variables before initialization
+            proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']
+            saved_proxies = {}
             
-            return jsonify({
-                'success': True,
-                'response': response.choices[0].message.content,
-                'model': response.model,
-                'usage': {
-                    'prompt_tokens': response.usage.prompt_tokens,
-                    'completion_tokens': response.usage.completion_tokens,
-                    'total_tokens': response.usage.total_tokens
-                } if hasattr(response, 'usage') else None
-            })
+            for var in proxy_vars:
+                if var in os.environ:
+                    saved_proxies[var] = os.environ.pop(var)
+            
+            try:
+                # Initialize OpenAI client with minimal parameters
+                client = OpenAI(api_key=api_key)
+                
+                # Test with real estate context
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a real estate document processing expert."},
+                        {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
+                    ],
+                    max_tokens=50,
+                    temperature=0.1
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'response': response.choices[0].message.content,
+                    'model': response.model,
+                    'usage': {
+                        'prompt_tokens': response.usage.prompt_tokens,
+                        'completion_tokens': response.usage.completion_tokens,
+                        'total_tokens': response.usage.total_tokens
+                    } if hasattr(response, 'usage') else None
+                })
+                
+            finally:
+                # Restore proxy environment variables
+                for var, value in saved_proxies.items():
+                    os.environ[var] = value
             
         except ImportError as e:
             return jsonify({'error': f'OpenAI library not available: {str(e)}'}), 500
         except Exception as e:
-            error_msg = str(e)
-            
-            # If it's the proxies error, try to fix it
-            if "proxies" in error_msg.lower():
-                try:
-                    # Clear proxy-related environment variables temporarily
-                    old_http_proxy = os.environ.pop('HTTP_PROXY', None)
-                    old_https_proxy = os.environ.pop('HTTPS_PROXY', None)
-                    old_all_proxy = os.environ.pop('ALL_PROXY', None)
-                    
-                    # Retry with clean environment
-                    client = OpenAI(api_key=api_key)
-                    
-                    # Test with real estate context
-                    response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are a real estate document processing expert."},
-                            {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
-                        ],
-                        max_tokens=50,
-                        temperature=0.1
-                    )
-                    
-                    # Restore environment variables if they existed
-                    if old_http_proxy:
-                        os.environ['HTTP_PROXY'] = old_http_proxy
-                    if old_https_proxy:
-                        os.environ['HTTPS_PROXY'] = old_https_proxy
-                    if old_all_proxy:
-                        os.environ['ALL_PROXY'] = old_all_proxy
-                    
-                    return jsonify({
-                        'success': True,
-                        'response': response.choices[0].message.content,
-                        'model': response.model,
-                        'usage': {
-                            'prompt_tokens': response.usage.prompt_tokens,
-                            'completion_tokens': response.usage.completion_tokens,
-                            'total_tokens': response.usage.total_tokens
-                        } if hasattr(response, 'usage') else None,
-                        'note': 'Fixed proxy configuration issue'
-                    })
-                    
-                except Exception as retry_error:
-                    return jsonify({'error': f'OpenAI API error (retry failed): {str(retry_error)}'}), 500
-            else:
-                return jsonify({'error': f'OpenAI API error: {error_msg}'}), 500
+            return jsonify({'error': f'OpenAI API error: {str(e)}'}), 500
             
     except Exception as e:
         return jsonify({'error': f'Test failed: {str(e)}'}), 500
@@ -537,43 +501,33 @@ class AIServiceServerless:
         if self.api_key:
             try:
                 from openai import OpenAI
-                # Initialize OpenAI client with only supported parameters
-                self.client = OpenAI(
-                    api_key=self.api_key,
-                    timeout=60.0,
-                    max_retries=2
-                )
+                
+                # Clear all proxy-related environment variables before initialization
+                proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']
+                saved_proxies = {}
+                
+                for var in proxy_vars:
+                    if var in os.environ:
+                        saved_proxies[var] = os.environ.pop(var)
+                
+                try:
+                    # Initialize OpenAI client with minimal parameters
+                    self.client = OpenAI(api_key=self.api_key)
+                    print("OpenAI client initialized successfully")
+                except Exception as init_error:
+                    print(f"OpenAI client initialization failed: {str(init_error)}")
+                    self.client = None
+                finally:
+                    # Restore proxy environment variables
+                    for var, value in saved_proxies.items():
+                        os.environ[var] = value
+                        
             except ImportError:
+                print("OpenAI library not available")
                 pass
             except Exception as e:
-                # Log the error but don't fail initialization
-                error_msg = str(e)
-                print(f"OpenAI client initialization error: {error_msg}")
-                
-                # If it's the proxies error, clear proxy environment variables and retry
-                if "proxies" in error_msg.lower():
-                    print("Detected proxies error, attempting to clear proxy settings and retry...")
-                    # Clear proxy-related environment variables temporarily
-                    old_http_proxy = os.environ.pop('HTTP_PROXY', None)
-                    old_https_proxy = os.environ.pop('HTTPS_PROXY', None)
-                    old_all_proxy = os.environ.pop('ALL_PROXY', None)
-                    
-                    try:
-                        self.client = OpenAI(api_key=self.api_key)
-                        print("Successfully initialized OpenAI client after clearing proxy settings")
-                    except Exception as retry_error:
-                        print(f"Failed to initialize even after clearing proxies: {str(retry_error)}")
-                        self.client = None
-                    finally:
-                        # Restore environment variables if they existed
-                        if old_http_proxy:
-                            os.environ['HTTP_PROXY'] = old_http_proxy
-                        if old_https_proxy:
-                            os.environ['HTTPS_PROXY'] = old_https_proxy
-                        if old_all_proxy:
-                            os.environ['ALL_PROXY'] = old_all_proxy
-                else:
-                    self.client = None
+                print(f"Unexpected error during OpenAI setup: {str(e)}")
+                self.client = None
     
     def _make_openai_request(self, messages, temperature=None, max_tokens=1500):
         """Make OpenAI API request"""
