@@ -1,5 +1,5 @@
 /**
- * Data Extraction JavaScript for CRE PDF Extractor
+ * Data Extraction JavaScript for RExeli
  * Handles OCR processing, data extraction, and AI integration
  */
 

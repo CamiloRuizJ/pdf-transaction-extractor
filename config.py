@@ -1,6 +1,6 @@
 """
-Enhanced Configuration for PDF Transaction Extractor.
-Consolidated configuration with all necessary features from both V2 and Enhanced versions.
+Enhanced Configuration for RExeli.
+Consolidated configuration for AI-powered commercial real estate document processing.
 """
 
 import os
@@ -9,8 +9,13 @@ from pathlib import Path
 class Config:
     """Enhanced application configuration with enterprise features."""
     
-    # Flask settings
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'your-secret-key-here')
+    # Flask settings - Secure secret key handling
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        if os.environ.get('FLASK_ENV') == 'production':
+            raise ValueError("SECRET_KEY environment variable must be set in production")
+        else:
+            SECRET_KEY = 'development-key-only-not-for-production'
     MAX_CONTENT_LENGTH = 32 * 1024 * 1024  # 32MB max file size for large PDFs
     DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     HOST = os.environ.get('FLASK_HOST', '0.0.0.0')
@@ -139,14 +144,59 @@ class DevelopmentConfig(Config):
 
 
 class ProductionConfig(Config):
-    """Production configuration."""
+    """Production configuration for Vercel deployment."""
     DEBUG = False
     TESTING = False
+    
+    # Supabase PostgreSQL configuration
+    DATABASE_URL = os.environ.get('DATABASE_URL', os.environ.get('SUPABASE_DATABASE_URL', ''))
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+        'connect_args': {
+            'sslmode': 'require'
+        }
+    }
+    
+    # Disable Celery and Redis for serverless
+    CELERY_BROKER_URL = None
+    REDIS_URL = None
+    
+    # Serverless-optimized settings
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB for Vercel
+    WTF_CSRF_ENABLED = False  # Disable CSRF for API-only deployment
     
     # Production-specific settings
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # File storage (use temporary directory for serverless)
+    UPLOAD_FOLDER = '/tmp/uploads'
+    TEMP_FOLDER = '/tmp/temp'
+    
+    # OCR settings for serverless (no local executables)
+    TESSERACT_PATH = None  # Will use system tesseract or cloud OCR
+    POPPLER_PATH = None
+    
+    # Supabase specific settings
+    SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+    SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY', '')
+    SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
+    
+    def __init__(self):
+        # Override parent __init__ for serverless environment
+        import tempfile
+        import os
+        
+        # Use system temp directory in serverless
+        self.UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'uploads')
+        self.TEMP_FOLDER = os.path.join(tempfile.gettempdir(), 'temp')
+        
+        # Ensure directories exist
+        os.makedirs(self.UPLOAD_FOLDER, exist_ok=True)
+        os.makedirs(self.TEMP_FOLDER, exist_ok=True)
 
 
 class TestingConfig(Config):

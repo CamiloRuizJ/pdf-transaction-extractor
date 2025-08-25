@@ -131,48 +131,32 @@ def test_ai():
         if not api_key:
             return jsonify({'error': 'OpenAI API key not configured'}), 500
             
-        # Import OpenAI here to avoid import errors if not available
+        # Import OpenAI here to avoid import errors if not available  
         try:
             from openai import OpenAI
+            client = OpenAI(api_key=api_key)
             
-            # Clear all proxy-related environment variables before initialization
-            proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']
-            saved_proxies = {}
+            # Test with real estate context
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a real estate document processing expert."},
+                    {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
+                ],
+                max_tokens=50,
+                temperature=0.1
+            )
             
-            for var in proxy_vars:
-                if var in os.environ:
-                    saved_proxies[var] = os.environ.pop(var)
-            
-            try:
-                # Initialize OpenAI client with minimal parameters
-                client = OpenAI(api_key=api_key)
-                
-                # Test with real estate context
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a real estate document processing expert."},
-                        {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
-                    ],
-                    max_tokens=50,
-                    temperature=0.1
-                )
-                
-                return jsonify({
-                    'success': True,
-                    'response': response.choices[0].message.content,
-                    'model': response.model,
-                    'usage': {
-                        'prompt_tokens': response.usage.prompt_tokens,
-                        'completion_tokens': response.usage.completion_tokens,
-                        'total_tokens': response.usage.total_tokens
-                    } if hasattr(response, 'usage') else None
-                })
-                
-            finally:
-                # Restore proxy environment variables
-                for var, value in saved_proxies.items():
-                    os.environ[var] = value
+            return jsonify({
+                'success': True,
+                'response': response.choices[0].message.content,
+                'model': response.model,
+                'usage': {
+                    'prompt_tokens': response.usage.prompt_tokens,
+                    'completion_tokens': response.usage.completion_tokens,
+                    'total_tokens': response.usage.total_tokens
+                } if hasattr(response, 'usage') else None
+            })
             
         except ImportError as e:
             return jsonify({'error': f'OpenAI library not available: {str(e)}'}), 500
@@ -501,33 +485,9 @@ class AIServiceServerless:
         if self.api_key:
             try:
                 from openai import OpenAI
-                
-                # Clear all proxy-related environment variables before initialization
-                proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'http_proxy', 'https_proxy', 'all_proxy']
-                saved_proxies = {}
-                
-                for var in proxy_vars:
-                    if var in os.environ:
-                        saved_proxies[var] = os.environ.pop(var)
-                
-                try:
-                    # Initialize OpenAI client with minimal parameters
-                    self.client = OpenAI(api_key=self.api_key)
-                    print("OpenAI client initialized successfully")
-                except Exception as init_error:
-                    print(f"OpenAI client initialization failed: {str(init_error)}")
-                    self.client = None
-                finally:
-                    # Restore proxy environment variables
-                    for var, value in saved_proxies.items():
-                        os.environ[var] = value
-                        
+                self.client = OpenAI(api_key=self.api_key)
             except ImportError:
-                print("OpenAI library not available")
                 pass
-            except Exception as e:
-                print(f"Unexpected error during OpenAI setup: {str(e)}")
-                self.client = None
     
     def _make_openai_request(self, messages, temperature=None, max_tokens=1500):
         """Make OpenAI API request"""

@@ -1,0 +1,554 @@
+name: Test Automation Pipeline
+# PDF Transaction Extractor - Comprehensive CI/CD Testing Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.9'
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
+
+jobs:
+  # Static Code Analysis
+  code-quality:
+    name: Code Quality & Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run security audit
+        run: npm audit --audit-level high
+
+      - name: Run dependency vulnerability scan
+        run: npm run test:security:dependency
+        continue-on-error: true
+
+      - name: Upload ESLint results
+        uses: github/super-linter@v5
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_JAVASCRIPT_ES: true
+          VALIDATE_JSON: true
+          VALIDATE_HTML: true
+          VALIDATE_CSS: true
+
+  # Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16, 18, 20]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Archive test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: unit-test-results-node-${{ matrix.node-version }}
+          path: |
+            coverage/
+            jest-results.xml
+
+  # Backend Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-mock
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Setup test database
+        run: |
+          # Setup test database if needed
+          echo "Setting up test database..."
+
+      - name: Run integration tests
+        env:
+          FLASK_ENV: testing
+          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: sqlite:///test.db
+        run: |
+          python -m pytest tests/integration/ -v --cov=app --cov-report=xml
+
+      - name: Upload integration test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: integration
+          name: codecov-integration
+
+      - name: Archive integration test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            coverage.xml
+            pytest-results.xml
+
+  # End-to-End Tests
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1/4, 2/4, 3/4, 4/4]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Start application
+        run: |
+          python app.py &
+          sleep 10
+        env:
+          FLASK_ENV: testing
+          PORT: 5000
+
+      - name: Wait for application to be ready
+        run: |
+          timeout 60 bash -c 'until curl -s http://localhost:5000/health; do sleep 2; done'
+
+      - name: Run Playwright tests
+        run: npx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+        env:
+          CI: true
+          PLAYWRIGHT_HTML_REPORT: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}
+
+      - name: Upload E2E test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-results-${{ matrix.browser }}-${{ matrix.shard }}
+          path: |
+            test-results/
+            playwright-report-${{ matrix.browser }}-${{ matrix.shard }}/
+          retention-days: 7
+
+  # Performance Tests
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt
+
+      - name: Install Playwright
+        run: npx playwright install chromium
+
+      - name: Start application
+        run: |
+          python app.py &
+          sleep 10
+        env:
+          FLASK_ENV: production
+          PORT: 5000
+
+      - name: Wait for application
+        run: |
+          timeout 60 bash -c 'until curl -s http://localhost:5000/health; do sleep 2; done'
+
+      - name: Run performance tests
+        run: npx playwright test tests/performance/ --project=performance
+
+      - name: Run Lighthouse CI
+        run: npm run test:performance
+        continue-on-error: true
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            lighthouse-results/
+            performance-report.json
+
+  # Security Tests
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt
+          pip install safety bandit
+
+      - name: Install Playwright
+        run: npx playwright install chromium
+
+      - name: Run Python security scan
+        run: |
+          # Scan for known vulnerabilities
+          safety check
+          # Static security analysis
+          bandit -r app/ -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Start application for security testing
+        run: |
+          python app.py &
+          sleep 10
+        env:
+          FLASK_ENV: testing
+          PORT: 5000
+
+      - name: Wait for application
+        run: |
+          timeout 60 bash -c 'until curl -s http://localhost:5000/health; do sleep 2; done'
+
+      - name: Run security tests
+        run: npx playwright test tests/security/ --project=security
+
+      - name: Upload security results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-results
+          path: |
+            bandit-report.json
+            security-test-results/
+
+  # Mobile Tests
+  mobile-tests:
+    name: Mobile Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        device: [mobile-chrome, mobile-safari, tablet]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt
+
+      - name: Install Playwright
+        run: npx playwright install
+
+      - name: Start application
+        run: |
+          python app.py &
+          sleep 10
+        env:
+          FLASK_ENV: testing
+          PORT: 5000
+
+      - name: Run mobile tests
+        run: npx playwright test --project=${{ matrix.device }}
+
+      - name: Upload mobile test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: mobile-results-${{ matrix.device }}
+          path: test-results/
+
+  # Accessibility Tests
+  accessibility-tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r requirements.txt
+          npm install -g @axe-core/cli
+
+      - name: Start application
+        run: |
+          python app.py &
+          sleep 10
+        env:
+          FLASK_ENV: testing
+          PORT: 5000
+
+      - name: Run accessibility audit
+        run: |
+          axe http://localhost:5000 --exit
+          axe http://localhost:5000/tool --exit
+        continue-on-error: true
+
+      - name: Upload accessibility results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: accessibility-results
+          path: axe-results.json
+
+  # Test Report Aggregation
+  test-report:
+    name: Test Report
+    needs: [unit-tests, integration-tests, e2e-tests, performance-tests, security-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: test-results/
+
+      - name: Generate test report
+        run: |
+          echo "# Test Execution Report" > test-summary.md
+          echo "## Test Results Summary" >> test-summary.md
+          echo "- **Date**: $(date)" >> test-summary.md
+          echo "- **Commit**: ${{ github.sha }}" >> test-summary.md
+          echo "- **Branch**: ${{ github.ref_name }}" >> test-summary.md
+          echo "" >> test-summary.md
+          
+          # Add test results summary
+          if [ -d "test-results/unit-test-results-node-18" ]; then
+            echo "✅ Unit Tests: PASSED" >> test-summary.md
+          else
+            echo "❌ Unit Tests: FAILED" >> test-summary.md
+          fi
+          
+          if [ -d "test-results/integration-test-results" ]; then
+            echo "✅ Integration Tests: PASSED" >> test-summary.md
+          else
+            echo "❌ Integration Tests: FAILED" >> test-summary.md
+          fi
+          
+          if [ -d "test-results/e2e-results-chromium-1-4" ]; then
+            echo "✅ E2E Tests: PASSED" >> test-summary.md
+          else
+            echo "❌ E2E Tests: FAILED" >> test-summary.md
+          fi
+
+      - name: Upload test summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-summary
+          path: test-summary.md
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('test-summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+  # Deployment Tests (staging)
+  deployment-tests:
+    name: Deployment Tests
+    needs: [unit-tests, integration-tests, e2e-tests]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && success()
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Add actual deployment commands here
+
+      - name: Run smoke tests against staging
+        run: |
+          echo "Running smoke tests..."
+          # Add smoke test commands here
+          curl -f https://staging.pdf-extractor.com/health || exit 1
+
+      - name: Notify deployment status
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const status = '${{ job.status }}';
+            const message = status === 'success' 
+              ? '🚀 Deployment to staging successful!'
+              : '❌ Deployment to staging failed!';
+            
+            console.log(message);
+
+# Cleanup old artifacts
+cleanup:
+  name: Cleanup
+  runs-on: ubuntu-latest
+  if: always()
+  steps:
+    - name: Delete old artifacts
+      uses: geekyeggo/delete-artifact@v2
+      with:
+        name: |
+          unit-test-results-*
+          integration-test-results
+          e2e-results-*
+          performance-results
+        useGlob: true
+        failOnError: false

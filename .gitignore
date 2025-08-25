@@ -70,3 +70,4 @@ poppler/
 # Temporary files
 *.tmp
 *.temp
+.vercel

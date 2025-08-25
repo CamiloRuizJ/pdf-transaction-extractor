@@ -1,0 +1,17 @@
+module.exports = [
+  {
+    path: "./dist/assets/index-*.js",
+    maxSize: "500kb",
+    compression: "gzip",
+  },
+  {
+    path: "./dist/assets/index-*.css",
+    maxSize: "50kb",
+    compression: "gzip",
+  },
+  {
+    path: "./dist/assets/vendor-*.js",
+    maxSize: "300kb",
+    compression: "gzip",
+  },
+];

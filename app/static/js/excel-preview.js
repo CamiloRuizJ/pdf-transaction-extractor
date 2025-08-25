@@ -1,5 +1,5 @@
 /**
- * Excel Preview JavaScript for CRE PDF Extractor
+ * Excel Preview JavaScript for RExeli
  * Handles spreadsheet-like preview interface and data display
  */
 

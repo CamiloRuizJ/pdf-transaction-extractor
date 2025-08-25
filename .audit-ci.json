@@ -1,0 +1,31 @@
+{
+  "moderate": false,
+  "high": true,
+  "critical": true,
+  "allowlist": [
+    
+  ],
+  "skip-dev": false,
+  "report-type": "full",
+  "output-format": "json",
+  "registry": "https://registry.npmjs.org/",
+  "whitelist": [
+    
+  ],
+  "path-whitelist": [
+    
+  ],
+  "package-manager": "npm",
+  "summary": true,
+  "advisories": [
+    
+  ],
+  "config": {
+    "signs": {
+      "error": "❌",
+      "warning": "⚠️",
+      "info": "ℹ️",
+      "success": "✅"
+    }
+  }
+}

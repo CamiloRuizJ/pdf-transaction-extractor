@@ -1,5 +1,5 @@
 /**
- * CRE PDF Extractor - Main JavaScript
+ * RExeli - Main JavaScript
  * Enhanced AI-Powered Commercial Real Estate Document Processing
  */
 
@@ -36,7 +36,7 @@ const AppState = {
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('🚀 CRE PDF Extractor - Enhanced Version Initializing...');
+  console.log('🚀 RExeli - Enhanced Version Initializing...');
   
   initializeApp();
   setupEventListeners();
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
   initializeSecurity();
   setupPerformanceMonitoring();
   
-  console.log('✅ CRE PDF Extractor initialized successfully');
+  console.log('✅ RExeli initialized successfully');
 });
 
 /**
@@ -792,7 +792,7 @@ window.CREApp = {
   throttle
 };
 
-console.log('🎯 CRE PDF Extractor - Main JavaScript loaded successfully');
+console.log('🎯 RExeli - Main JavaScript loaded successfully');
 
 /**
  * Setup enhanced upload functionality

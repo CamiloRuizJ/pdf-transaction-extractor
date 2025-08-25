@@ -1,385 +1,370 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Converter V2 - AI-Powered Real Estate Document Processing</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .hero-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .feature-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: none;
-            border-radius: 15px;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        .ai-badge {
-            background: linear-gradient(45deg, #ff6b6b, #feca57);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-        .stats-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 2rem;
-        }
-        .document-type-card {
-            border-left: 4px solid #667eea;
-            transition: all 0.3s ease;
-        }
-        .document-type-card:hover {
-            border-left-color: #764ba2;
-            background-color: #f8f9fa;
-        }
-        .floating-animation {
-            animation: float 3s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-robot me-2"></i>
-                PDF Converter V2
-                <span class="ai-badge ms-2">AI-Powered</span>
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/tool">
-                    <i class="fas fa-cogs me-1"></i>Processing Tool
-                </a>
-                <a class="nav-link" href="/health">
-                    <i class="fas fa-heartbeat me-1"></i>Health
-                </a>
-            </div>
+{% extends 'base.html' %}
+{% block title %}RExeli - AI-Powered Commercial Real Estate Document Processing{% endblock %}
+
+{% block content %}
+<!-- Hero Section with AI Features -->
+<section class="hero enhanced">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <div class="hero-badge">
+          <span class="badge-icon">🤖</span>
+          <span>AI-Powered Extraction</span>
         </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero-gradient py-5">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <h1 class="display-4 fw-bold mb-4">
-                        <i class="fas fa-brain me-3 floating-animation"></i>
-                        AI-Powered PDF Processing
-                    </h1>
-                    <p class="lead mb-4">
-                        Transform your real estate documents with cutting-edge AI technology. 
-                        Automatically classify, extract, and validate data from rent rolls, 
-                        offering memos, leases, and more with 95%+ accuracy.
-                    </p>
-                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-start mb-4">
-                        <a href="/tool" class="btn btn-light btn-lg px-4">
-                            <i class="fas fa-rocket me-2"></i>
-                            Start Processing
-                        </a>
-                        <a href="#features" class="btn btn-outline-light btn-lg px-4">
-                            <i class="fas fa-play me-2"></i>
-                            Watch Demo
-                        </a>
-                    </div>
-                </div>
-                <div class="col-lg-4 text-center">
-                    <i class="fas fa-file-pdf fa-8x text-white-50 floating-animation"></i>
-                </div>
-            </div>
+        <h1>Transform CRE PDFs into Structured Data with AI Intelligence</h1>
+        <p class="hero-subtitle">
+          Upload commercial real estate documents and let RExeli's AI-powered system extract, validate, and structure your data automatically. 
+          Advanced machine learning for intelligent field recognition and data enhancement.
+        </p>
+        
+        <div class="cta-row">
+          <a href="/tool" class="btn btn-primary btn-lg">
+            <span class="btn-icon">🚀</span>
+            Launch RExeli
+          </a>
+          <a href="#ai-capabilities" class="btn btn-ghost btn-lg">
+            <span class="btn-icon">✨</span>
+            Explore AI Features
+          </a>
         </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="py-5 bg-light">
-        <div class="container">
-            <div class="row text-center">
-                <div class="col-md-3 mb-3">
-                    <div class="stats-card">
-                        <i class="fas fa-percentage fa-2x mb-2"></i>
-                        <h3 class="fw-bold">95%</h3>
-                        <p class="mb-0">Accuracy Rate</p>
-                    </div>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <div class="stats-card">
-                        <i class="fas fa-clock fa-2x mb-2"></i>
-                        <h3 class="fw-bold">30s</h3>
-                        <p class="mb-0">Processing Time</p>
-                    </div>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <div class="stats-card">
-                        <i class="fas fa-file-alt fa-2x mb-2"></i>
-                        <h3 class="fw-bold">6+</h3>
-                        <p class="mb-0">Document Types</p>
-                    </div>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <div class="stats-card">
-                        <i class="fas fa-brain fa-2x mb-2"></i>
-                        <h3 class="fw-bold">AI</h3>
-                        <p class="mb-0">Powered</p>
-                    </div>
-                </div>
-            </div>
+        
+        <div class="trust-row enhanced">
+          <div class="kpi">
+            <span class="kpi-num">95%</span>
+            <span class="kpi-label">AI Accuracy</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-num">10×</span>
+            <span class="kpi-label">Faster Processing</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-num">100%</span>
+            <span class="kpi-label">Secure</span>
+          </div>
         </div>
-    </section>
-
-    <!-- Features Section -->
-    <section id="features" class="py-5">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5 fw-bold">V2 AI Features</h2>
-                <p class="lead text-muted">Experience the future of document processing</p>
-            </div>
-            
-            <div class="row">
-                <div class="col-lg-4 mb-4">
-                    <div class="card feature-card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="bg-primary bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <i class="fas fa-brain fa-2x"></i>
-                            </div>
-                            <h5 class="card-title">AI Classification</h5>
-                            <p class="card-text">
-                                Automatically identify document types with 94% confidence using advanced machine learning algorithms.
-                            </p>
-                            <div class="mt-3">
-                                <span class="badge bg-success me-1">Rent Rolls</span>
-                                <span class="badge bg-info me-1">Offering Memos</span>
-                                <span class="badge bg-warning">Leases</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 mb-4">
-                    <div class="card feature-card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="bg-success bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <i class="fas fa-lightbulb fa-2x"></i>
-                            </div>
-                            <h5 class="card-title">Smart Region Detection</h5>
-                            <p class="card-text">
-                                AI suggests optimal regions for data extraction, learning from your document patterns.
-                            </p>
-                            <div class="mt-3">
-                                <span class="badge bg-primary me-1">Unit Numbers</span>
-                                <span class="badge bg-secondary me-1">Rent Amounts</span>
-                                <span class="badge bg-dark">Tenant Names</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 mb-4">
-                    <div class="card feature-card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="bg-warning bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <i class="fas fa-shield-alt fa-2x"></i>
-                            </div>
-                            <h5 class="card-title">Data Validation</h5>
-                            <p class="card-text">
-                                AI validates extracted data against real estate market standards and catches errors.
-                            </p>
-                            <div class="mt-3">
-                                <span class="badge bg-success me-1">Price Validation</span>
-                                <span class="badge bg-info me-1">Date Checks</span>
-                                <span class="badge bg-warning">Format Correction</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row mt-4">
-                <div class="col-lg-4 mb-4">
-                    <div class="card feature-card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="bg-info bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <i class="fas fa-chart-line fa-2x"></i>
-                            </div>
-                            <h5 class="card-title">Quality Scoring</h5>
-                            <p class="card-text">
-                                Get detailed quality scores and confidence levels for every extraction with AI assessment.
-                            </p>
-                            <div class="mt-3">
-                                <span class="badge bg-success me-1">96% Quality</span>
-                                <span class="badge bg-primary me-1">Confidence</span>
-                                <span class="badge bg-info">Analytics</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 mb-4">
-                    <div class="card feature-card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="bg-danger bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <i class="fas fa-file-excel fa-2x"></i>
-                            </div>
-                            <h5 class="card-title">Excel Export</h5>
-                            <p class="card-text">
-                                Export structured data to Excel with formulas, formatting, and professional layouts.
-                            </p>
-                            <div class="mt-3">
-                                <span class="badge bg-success me-1">Formatted</span>
-                                <span class="badge bg-primary me-1">Calculated</span>
-                                <span class="badge bg-info">Ready-to-Use</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 mb-4">
-                    <div class="card feature-card h-100">
-                        <div class="card-body text-center p-4">
-                            <div class="bg-secondary bg-gradient text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                <i class="fas fa-cogs fa-2x"></i>
-                            </div>
-                            <h5 class="card-title">Real-time Processing</h5>
-                            <p class="card-text">
-                                Watch AI work in real-time with live progress updates and status monitoring.
-                            </p>
-                            <div class="mt-3">
-                                <span class="badge bg-success me-1">Live Updates</span>
-                                <span class="badge bg-primary me-1">Progress Bar</span>
-                                <span class="badge bg-info">Status Log</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        
+        <div class="ai-features-preview">
+          <span class="ai-feature">🧠 Smart Field Detection</span>
+          <span class="ai-feature">📊 Data Validation</span>
+          <span class="ai-feature">🔒 Encrypted Storage</span>
         </div>
-    </section>
-
-    <!-- Document Types Section -->
-    <section class="py-5 bg-light">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5 fw-bold">Supported Document Types</h2>
-                <p class="lead text-muted">Specialized AI models for real estate documents</p>
+      </div>
+      
+      <div class="hero-media">
+        <div class="mockup-card enhanced">
+          <div class="mockup-header">
+            <div class="mockup-bar">
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
+              <span class="mockup-dot"></span>
             </div>
-            
-            <div class="row">
-                <div class="col-lg-6 mb-3">
-                    <div class="card document-type-card h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-primary bg-gradient text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
-                                    <i class="fas fa-list fa-lg"></i>
-                                </div>
-                                <div>
-                                    <h5 class="card-title mb-1">Rent Rolls</h5>
-                                    <p class="card-text mb-2">Unit numbers, tenant info, rent amounts, lease terms</p>
-                                    <div class="small">
-                                        <span class="badge bg-success me-1">95% Accuracy</span>
-                                        <span class="badge bg-info">AI Validated</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-6 mb-3">
-                    <div class="card document-type-card h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-success bg-gradient text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
-                                    <i class="fas fa-file-contract fa-lg"></i>
-                                </div>
-                                <div>
-                                    <h5 class="card-title mb-1">Offering Memos</h5>
-                                    <p class="card-text mb-2">Property details, pricing, cap rates, NOI analysis</p>
-                                    <div class="small">
-                                        <span class="badge bg-success me-1">94% Accuracy</span>
-                                        <span class="badge bg-info">Financial Data</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-6 mb-3">
-                    <div class="card document-type-card h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-warning bg-gradient text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
-                                    <i class="fas fa-chart-bar fa-lg"></i>
-                                </div>
-                                <div>
-                                    <h5 class="card-title mb-1">Comparable Sales</h5>
-                                    <p class="card-text mb-2">Sale prices, dates, property characteristics, market data</p>
-                                    <div class="small">
-                                        <span class="badge bg-success me-1">93% Accuracy</span>
-                                        <span class="badge bg-info">Market Analysis</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-6 mb-3">
-                    <div class="card document-type-card h-100">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="bg-info bg-gradient text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
-                                    <i class="fas fa-handshake fa-lg"></i>
-                                </div>
-                                <div>
-                                    <h5 class="card-title mb-1">Lease Agreements</h5>
-                                    <p class="card-text mb-2">Tenant/landlord info, lease terms, rent schedules</p>
-                                    <div class="small">
-                                        <span class="badge bg-success me-1">92% Accuracy</span>
-                                        <span class="badge bg-info">Legal Terms</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="ai-status">
+              <span class="ai-indicator active"></span>
+              <span>AI Processing Active</span>
             </div>
+          </div>
+          <div class="mockup-body">
+            <div class="extraction-preview">
+              <div class="pdf-section">
+                <div class="pdf-page"></div>
+                <div class="region-overlay"></div>
+              </div>
+              <div class="data-section">
+                <div class="data-header">
+                  <span class="data-icon">📊</span>
+                  <span>Extracted Data</span>
+                </div>
+                <div class="data-grid">
+                  <div class="data-row header">
+                    <span>Property</span>
+                    <span>Address</span>
+                    <span>Square Feet</span>
+                    <span>Rent/SF</span>
+                  </div>
+                  <div class="data-row">
+                    <span>Office Building</span>
+                    <span>123 Main St</span>
+                    <span>15,000</span>
+                    <span>$35.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-    </section>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <!-- CTA Section -->
-    <section class="py-5 bg-primary text-white">
-        <div class="container text-center">
-            <h2 class="display-5 fw-bold mb-4">Ready to Transform Your Documents?</h2>
-            <p class="lead mb-4">Experience the power of AI-driven document processing today</p>
-            <a href="/tool" class="btn btn-light btn-lg px-5">
-                <i class="fas fa-rocket me-2"></i>
-                Start Processing Now
-            </a>
+<!-- AI Capabilities Section -->
+<section id="ai-capabilities" class="section ai-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>AI-Powered Intelligence</h2>
+      <p>Advanced machine learning capabilities that understand commercial real estate documents</p>
+    </div>
+    
+    <div class="ai-features-grid">
+      <div class="ai-feature-card">
+        <div class="ai-icon">🧠</div>
+        <h3>Smart Field Recognition</h3>
+        <p>RExeli's AI automatically identifies property addresses, lease terms, financial data, and tenant information without manual configuration.</p>
+        <div class="feature-tags">
+          <span class="tag">NLP Processing</span>
+          <span class="tag">Context Aware</span>
         </div>
-    </section>
-
-    <footer class="bg-dark text-white py-4">
-        <div class="container text-center">
-            <p class="mb-0">
-                <i class="fas fa-robot me-2"></i>
-                PDF Converter V2 - AI-Powered Real Estate Document Processing
-            </p>
-            <small class="text-muted">Built with OpenAI GPT and advanced machine learning</small>
+      </div>
+      
+      <div class="ai-feature-card">
+        <div class="ai-icon">🔍</div>
+        <h3>Intelligent Data Validation</h3>
+        <p>RExeli validates extracted data for consistency, flags potential errors, and suggests corrections based on commercial real estate standards.</p>
+        <div class="feature-tags">
+          <span class="tag">Error Detection</span>
+          <span class="tag">Quality Assurance</span>
         </div>
-    </footer>
+      </div>
+      
+      <div class="ai-feature-card">
+        <div class="ai-icon">📊</div>
+        <h3>Adaptive Learning</h3>
+        <p>RExeli learns from your document patterns and improves extraction accuracy over time for your specific document types.</p>
+        <div class="feature-tags">
+          <span class="tag">Machine Learning</span>
+          <span class="tag">Continuous Improvement</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+<!-- Core Features Section -->
+<section id="features" class="section features-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Built for Commercial Real Estate Professionals</h2>
+      <p>Comprehensive features designed specifically for CRE document processing workflows</p>
+    </div>
+    
+    <div class="feature-grid enhanced">
+      <article class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Precision Region Selection</h3>
+        <p>AI-assisted region detection with manual fine-tuning. Draw precise extraction areas with smart snapping and automatic field suggestions.</p>
+        <ul class="feature-list">
+          <li>Visual PDF rendering with zoom/pan</li>
+          <li>Smart region snapping</li>
+          <li>Field name suggestions</li>
+        </ul>
+      </article>
+      
+      <article class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Real-time Data Preview</h3>
+        <p>See extracted data populate instantly as you define regions. Live Excel-like preview with column reordering and cell editing capabilities.</p>
+        <ul class="feature-list">
+          <li>Live data preview</li>
+          <li>Column management</li>
+          <li>Instant validation</li>
+        </ul>
+      </article>
+      
+      <article class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>Enterprise Security</h3>
+        <p>Bank-level encryption for sensitive CRE data. Secure API key management, rate limiting, and comprehensive audit logging.</p>
+        <ul class="feature-list">
+          <li>End-to-end encryption</li>
+          <li>Secure key storage</li>
+          <li>Access controls</li>
+        </ul>
+      </article>
+      
+      <article class="feature-card">
+        <div class="feature-icon">📈</div>
+        <h3>Advanced Analytics</h3>
+        <p>AI-powered insights and data quality metrics. Automatic pattern recognition for improved extraction accuracy.</p>
+        <ul class="feature-list">
+          <li>Quality scoring</li>
+          <li>Pattern analysis</li>
+          <li>Performance metrics</li>
+        </ul>
+      </article>
+      
+      <article class="feature-card">
+        <div class="feature-icon">🔄</div>
+        <h3>Batch Processing</h3>
+        <p>Process multiple documents simultaneously with consistent extraction templates. Perfect for large portfolio analysis.</p>
+        <ul class="feature-list">
+          <li>Multi-document processing</li>
+          <li>Template reuse</li>
+          <li>Automated workflows</li>
+        </ul>
+      </article>
+      
+      <article class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>Export & Integration</h3>
+        <p>Multiple export formats with API integration capabilities. Connect directly to your existing CRE software stack.</p>
+        <ul class="feature-list">
+          <li>Excel/CSV export</li>
+          <li>API endpoints</li>
+          <li>Custom formatting</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- Security Section -->
+<section id="security" class="section security-section">
+  <div class="container">
+    <div class="security-grid">
+      <div class="security-content">
+        <h2>Enterprise-Grade Security</h2>
+        <p>Your commercial real estate data deserves the highest level of protection. Our security-first architecture ensures complete data privacy and compliance.</p>
+        
+        <div class="security-features">
+          <div class="security-item">
+            <span class="security-icon">🔐</span>
+            <div class="security-text">
+              <h4>Encrypted API Keys</h4>
+              <p>All API keys are encrypted using Fernet encryption with PBKDF2HMAC key derivation</p>
+            </div>
+          </div>
+          
+          <div class="security-item">
+            <span class="security-icon">🛡️</span>
+            <div class="security-text">
+              <h4>Rate Limiting & IP Protection</h4>
+              <p>Advanced middleware prevents abuse with intelligent rate limiting and IP blocking</p>
+            </div>
+          </div>
+          
+          <div class="security-item">
+            <span class="security-icon">🔍</span>
+            <div class="security-text">
+              <h4>Comprehensive Audit Logs</h4>
+              <p>Full activity logging with suspicious behavior detection and alerting</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="security-visual">
+        <div class="security-badge">
+          <div class="badge-icon">🔒</div>
+          <div class="badge-text">
+            <h3>SOC 2 Ready</h3>
+            <p>Enterprise security standards</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works Section -->
+<section id="how" class="section how-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>How It Works</h2>
+      <p>Four simple steps to transform your CRE documents into structured data</p>
+    </div>
+    
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Upload Documents</h3>
+          <p>Drag and drop your commercial real estate PDFs. Supports offering memos, rent rolls, comp sheets, and broker reports.</p>
+          <div class="step-icon">📄</div>
+        </div>
+      </div>
+      
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>AI Field Detection</h3>
+          <p>RExeli's AI analyzes the document structure and suggests extraction regions for common CRE data fields automatically.</p>
+          <div class="step-icon">🤖</div>
+        </div>
+      </div>
+      
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>Refine & Validate</h3>
+          <p>Review AI suggestions, draw custom regions, and validate extracted data with real-time preview and quality scoring.</p>
+          <div class="step-icon">✅</div>
+        </div>
+      </div>
+      
+      <div class="step">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <h3>Export & Integrate</h3>
+          <p>Download structured data as Excel/CSV or use RExeli's API to integrate directly with your existing CRE software systems.</p>
+          <div class="step-icon">📊</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="cta-section">
+      <a href="/tool" class="btn btn-primary btn-xl">
+        <span class="btn-icon">🚀</span>
+        Start Processing Documents
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Document Types Section -->
+<section class="section document-types-section">
+  <div class="container">
+    <div class="document-types-header">
+      <h2>Supports All CRE Document Types</h2>
+      <p>Optimized for the documents you work with every day</p>
+    </div>
+    
+    <div class="document-grid">
+      <div class="document-card">
+        <div class="doc-icon">📋</div>
+        <h3>Offering Memorandums</h3>
+        <p>Extract property details, financial summaries, and market data from OM documents</p>
+      </div>
+      
+      <div class="document-card">
+        <div class="doc-icon">📊</div>
+        <h3>Rent Rolls</h3>
+        <p>Process tenant information, lease terms, and rental income data efficiently</p>
+      </div>
+      
+      <div class="document-card">
+        <div class="doc-icon">📈</div>
+        <h3>Comparable Sales</h3>
+        <p>Analyze market comparisons, pricing data, and property characteristics</p>
+      </div>
+      
+      <div class="document-card">
+        <div class="doc-icon">📑</div>
+        <h3>Broker Reports</h3>
+        <p>Extract market insights, property valuations, and investment analysis</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ai-features.js') }}"></script>
+<script>
+  // Initialize AI feature animations
+  document.addEventListener('DOMContentLoaded', function() {
+    initializeAIAnimations();
+    initializeSecurityBadges();
+    initializeStepAnimations();
+  });
+</script>
+{% endblock %}

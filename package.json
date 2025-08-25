@@ -1,0 +1,49 @@
+{
+  "name": "rexeli",
+  "version": "2.0.0",
+  "description": "RExeli - AI-Powered Commercial Real Estate Document Processing Platform",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm install && npm run install:frontend",
+    "test": "cd frontend && npm run test",
+    "test:watch": "cd frontend && npm run test -- --watch",
+    "test:coverage": "cd frontend && npm run test:coverage",
+    "test:e2e": "cd frontend && npm run test:e2e",
+    "test:e2e:ui": "cd frontend && npm run test:e2e:ui",
+    "test:accessibility": "cd frontend && npm run test:accessibility",
+    "test:all": "cd frontend && npm run test:all",
+    "lint": "cd frontend && npm run lint",
+    "lint:fix": "cd frontend && npm run lint -- --fix",
+    "type-check": "cd frontend && tsc --noEmit",
+    "clean": "rm -rf node_modules frontend/node_modules frontend/dist",
+    "start:backend": "python app.py",
+    "start:full": "concurrently \"npm run start:backend\" \"npm run dev\""
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/rexeli.git"
+  },
+  "keywords": [
+    "rexeli",
+    "commercial-real-estate",
+    "document-processing",
+    "ai-extraction",
+    "pdf-processing",
+    "data-extraction"
+  ],
+  "license": "MIT"
+}

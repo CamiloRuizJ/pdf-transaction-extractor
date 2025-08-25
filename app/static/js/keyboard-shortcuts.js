@@ -1,5 +1,5 @@
 /**
- * Keyboard Shortcuts JavaScript for CRE PDF Extractor
+ * Keyboard Shortcuts JavaScript for RExeli
  * Handles global keyboard shortcuts and hotkeys
  */
 

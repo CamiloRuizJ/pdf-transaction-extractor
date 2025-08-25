@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(where claude)",
+      "Bash(claude mcp:*)",
+      "Bash(mkdir:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(del test_ocr_imports.py)",
+      "Bash(del test_excel_service.py)",
+      "Bash(del demo_excel_features.py)",
+      "mcp__browser-mcp__browser_navigate",
+      "mcp__browser-mcp__browser_click",
+      "mcp__browser-mcp__browser_snapshot",
+      "Bash(uvx mcp-server-fetch:*)",
+      "Bash(source:*)",
+      "mcp__fetch-mcp__fetch_url",
+      "mcp__browser-mcp__browser_wait",
+      "mcp__browser-mcp__browser_screenshot",
+      "mcp__browser-mcp__browser_get_console_logs"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

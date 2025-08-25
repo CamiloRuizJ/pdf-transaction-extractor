@@ -12,6 +12,9 @@ from sklearn.naive_bayes import MultinomialNB
 import joblib
 import os
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from config import Config
 
 logger = structlog.get_logger()

@@ -1,8 +1,8 @@
-# PDF Transaction Extractor Enhanced - Enterprise Edition
+# RExeli - Enterprise Edition
 
-**AI-Powered PDF to Excel Conversion for Real Estate Professionals**
+**AI-Powered Document Processing Platform for Commercial Real Estate Professionals**
 
-PDF Transaction Extractor Enhanced is a strategic, enterprise-grade application that combines the best features from both V2 and Enhanced versions. It leverages advanced AI, machine learning, and modern web technologies to automatically classify, extract, validate, and export data from Real Estate documents into structured Excel formats.
+RExeli is a strategic, enterprise-grade application that leverages advanced AI, machine learning, and modern web technologies to automatically classify, extract, validate, and export data from commercial real estate documents into structured Excel formats.
 
 ## 🎯 **What's New in Enhanced Edition**
 

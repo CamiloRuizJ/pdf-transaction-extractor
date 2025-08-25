@@ -1,5 +1,5 @@
 /**
- * Region Management JavaScript for CRE PDF Extractor
+ * Region Management JavaScript for RExeli
  * Handles region creation, editing, deletion, and naming
  */
 

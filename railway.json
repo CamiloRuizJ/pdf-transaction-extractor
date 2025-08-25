@@ -1,5 +1,5 @@
 {
-  "name": "pdf-converter-v2",
+  "name": "rexeli",
   "build": {
     "builder": "nixpacks"
   },
@@ -14,7 +14,7 @@
       "variables": {
         "V2_ENABLED": "true",
         "FLASK_ENV": "production",
-        "DATABASE_URL": "sqlite:///pdf_converter_v2.db",
+        "DATABASE_URL": "sqlite:///rexeli.db",
         "REDIS_URL": "redis://redis:6379/0"
       }
     }

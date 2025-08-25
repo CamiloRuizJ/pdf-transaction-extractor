@@ -1,5 +1,5 @@
 /**
- * PDF Viewer JavaScript for CRE PDF Extractor
+ * PDF Viewer JavaScript for RExeli
  * Handles PDF rendering, zooming, panning, and canvas interactions
  */
 
