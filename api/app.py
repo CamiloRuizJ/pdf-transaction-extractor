@@ -1003,6 +1003,16 @@ class AIServiceServerless:
             try:
                 import openai
                 
+                # Clear any proxy environment variables that might interfere
+                import os
+                proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']
+                original_proxy_values = {}
+                for var in proxy_vars:
+                    if var in os.environ:
+                        original_proxy_values[var] = os.environ[var]
+                        del os.environ[var]
+                        print(f"Temporarily cleared proxy environment variable: {var}")
+                
                 # Determine OpenAI version and initialize accordingly
                 openai_version = getattr(openai, '__version__', '0.0.0')
                 print(f"OpenAI package version: {openai_version}")
@@ -1010,17 +1020,35 @@ class AIServiceServerless:
                 # For OpenAI v1.0+ (new API)
                 if hasattr(openai, 'OpenAI'):
                     try:
-                        # Initialize new client with minimal parameters to avoid compatibility issues
-                        self.client = openai.OpenAI(
-                            api_key=self.api_key
-                            # Remove all optional parameters that might cause issues
-                        )
+                        # Initialize new client with absolutely minimal parameters
+                        # This avoids proxy-related initialization errors
+                        client_kwargs = {
+                            'api_key': self.api_key
+                        }
+                        
+                        # Create client with only essential parameters
+                        self.client = openai.OpenAI(**client_kwargs)
                         self.client_version = "new"
-                        print(f"OpenAI client initialized successfully (v1.0+ API)")
+                        print(f"OpenAI client initialized successfully (v1.0+ API) with version {openai_version}")
+                        
+                        # Test the client with a simple call to ensure it works
+                        try:
+                            # This is just to verify the client is working
+                            models = self.client.models.list()
+                            print("OpenAI client test successful - client is functional")
+                        except Exception as test_e:
+                            print(f"OpenAI client test failed but client created: {str(test_e)}")
+                            # Continue anyway as the client might work for completions
+                        
                     except TypeError as e:
-                        print(f"New API initialization failed with TypeError: {str(e)}")
-                        print("This usually indicates unsupported parameters - falling back to old API")
-                        # Fall back to old API
+                        error_msg = str(e)
+                        print(f"New API initialization failed with TypeError: {error_msg}")
+                        
+                        if 'proxies' in error_msg or 'proxy' in error_msg:
+                            print("DETECTED: Proxy-related error in OpenAI client initialization")
+                            print("This indicates a dependency is passing proxy parameters")
+                        
+                        print("Falling back to old API initialization")
                         self._init_old_api(openai)
                     except Exception as e:
                         print(f"New API initialization failed: {str(e)}")
@@ -1028,6 +1056,11 @@ class AIServiceServerless:
                 else:
                     # Use old API format
                     self._init_old_api(openai)
+                
+                # Restore any proxy environment variables
+                for var, value in original_proxy_values.items():
+                    os.environ[var] = value
+                    print(f"Restored proxy environment variable: {var}")
                     
             except ImportError as e:
                 print(f"OpenAI package not available: {str(e)} - using fallback service")
