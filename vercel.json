@@ -7,7 +7,7 @@
     "api/app.py": {
       "runtime": "@vercel/python@5.0.0",
       "maxDuration": 300,
-      "memory": 1024
+      "memory": 3008
     },
     "api/test_minimal_openai.py": {
       "runtime": "@vercel/python@5.0.0",

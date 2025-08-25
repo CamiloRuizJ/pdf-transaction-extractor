@@ -13,13 +13,52 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:5000' 
   : `${window.location.origin}/api`;
 
+// File upload constants
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES / (1024 * 1024);
+
+// Utility function to format file size
+const formatFileSize = (bytes: number): string => {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)}MB` : `${(bytes / 1024).toFixed(1)}KB`;
+};
+
+// Utility function to validate PDF files
+const validatePdfFile = (file: File): { valid: boolean; error?: string } => {
+  // Check file size
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return {
+      valid: false,
+      error: `File too large: ${formatFileSize(file.size)}. Maximum allowed: ${MAX_FILE_SIZE_MB}MB. Please compress or use a smaller PDF file.`
+    };
+  }
+
+  // Check empty file
+  if (file.size === 0) {
+    return {
+      valid: false,
+      error: 'File is empty. Please select a valid PDF document.'
+    };
+  }
+
+  // Check file type
+  if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+    return {
+      valid: false,
+      error: 'Only PDF files are supported. Please upload a PDF document.'
+    };
+  }
+
+  return { valid: true };
+};
+
 class ApiService {
   private client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 30000, // 30 seconds
+      timeout: 120000, // 2 minutes for larger file uploads
       headers: {
         'Content-Type': 'application/json',
       },
@@ -50,6 +89,9 @@ class ApiService {
         if (error.response?.status === 401) {
           // Handle unauthorized
           console.error('Unauthorized access');
+        } else if (error.response?.status === 413) {
+          // Handle payload too large
+          console.error('File too large:', error.message);
         } else if (error.response?.status >= 500) {
           // Handle server errors
           console.error('Server error:', error.message);
@@ -103,6 +145,12 @@ class ApiService {
     onProgress?: (progress: UploadProgress) => void
   ): Promise<ApiResponse<{ filename: string; filepath: string; pdf_info: any }>> {
     try {
+      // Validate file using utility function
+      const validation = validatePdfFile(file);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
@@ -110,6 +158,9 @@ class ApiService {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 300000, // 5 minutes for file uploads
+        maxContentLength: MAX_FILE_SIZE_BYTES, // 50MB
+        maxBodyLength: MAX_FILE_SIZE_BYTES, // 50MB
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total && onProgress) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -345,6 +396,19 @@ class ApiService {
     onProgress?: (fileId: string, progress: UploadProgress) => void
   ): Promise<ApiResponse<Array<{ filename: string; filepath: string; pdf_info: any }>>> {
     try {
+      // Validate all files first before uploading any
+      const validationErrors: string[] = [];
+      files.forEach((file, index) => {
+        const validation = validatePdfFile(file);
+        if (!validation.valid) {
+          validationErrors.push(`File ${index + 1} (${file.name}): ${validation.error}`);
+        }
+      });
+
+      if (validationErrors.length > 0) {
+        throw new Error(`File validation failed:\n${validationErrors.join('\n')}`);
+      }
+
       const uploadPromises = files.map(file =>
         this.uploadFile(file, onProgress ? (progress) => onProgress(file.name, progress) : undefined)
           .then(result => result.data)
@@ -362,6 +426,7 @@ class ApiService {
   }
 }
 
-// Export singleton instance
+// Export singleton instance and utility functions
 export const apiService = new ApiService();
+export { validatePdfFile, formatFileSize, MAX_FILE_SIZE_MB, MAX_FILE_SIZE_BYTES };
 export default apiService;

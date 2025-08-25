@@ -31,7 +31,7 @@ class ServerlessConfig:
     """Serverless-optimized configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
     FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB - Increased for real estate PDFs
     
     # AI Settings
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -292,7 +292,7 @@ def get_config():
             'excel_export': True
         },
         'limits': {
-            'max_file_size_mb': 16,
+            'max_file_size_mb': 50,
             'supported_formats': ['pdf'],
             'processing_timeout': 300
         }
@@ -379,7 +379,9 @@ def upload_file():
         file.seek(0)  # Reset to beginning
         
         if file_size > app.config['MAX_CONTENT_LENGTH']:
-            return handle_error(f'File too large. Maximum size is {app.config["MAX_CONTENT_LENGTH"] // (1024*1024)}MB', 400)
+            max_size_mb = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
+            actual_size_mb = file_size / (1024*1024)
+            return handle_error(f'File too large. File size: {actual_size_mb:.1f}MB. Maximum allowed: {max_size_mb}MB. Please use a smaller PDF file.', 413)
         
         if file_size == 0:
             return handle_error('Empty file not allowed', 400)
