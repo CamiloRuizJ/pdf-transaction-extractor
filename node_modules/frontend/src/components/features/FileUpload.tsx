@@ -18,7 +18,7 @@ interface FileUploadProps {
 export function FileUpload({
   onFilesSelected,
   maxFiles = 10,
-  maxSize = 16 * 1024 * 1024, // 16MB
+  maxSize = 25 * 1024 * 1024, // 25MB - Aligned with Vercel serverless limits
   acceptedTypes = ['application/pdf'],
   className
 }: FileUploadProps) {

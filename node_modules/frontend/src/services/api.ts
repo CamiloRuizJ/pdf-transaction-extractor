@@ -13,8 +13,8 @@ const API_BASE_URL = process.env.NODE_ENV === 'development'
   ? 'http://localhost:5000' 
   : `${window.location.origin}/api`;
 
-// File upload constants
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+// File upload constants - Aligned with Vercel serverless limits
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB - Vercel serverless compatible
 const MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES / (1024 * 1024);
 
 // Utility function to format file size
