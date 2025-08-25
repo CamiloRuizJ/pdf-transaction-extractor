@@ -149,37 +149,20 @@ def test_ai():
                 # Try alternative import pattern
                 import openai
                 
-                # For older versions, try different client initialization
-                if hasattr(openai, 'OpenAI'):
-                    # New style (v1.0+)
-                    client = openai.OpenAI(api_key=api_key)
-                    response = client.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are a real estate document processing expert."},
-                            {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
-                        ],
-                        max_tokens=50,
-                        temperature=0.1
-                    )
-                    response_text = response.choices[0].message.content
-                    model = response.model
-                    usage = response.usage if hasattr(response, 'usage') else None
-                else:
-                    # Old style (pre-v1.0) - fallback
-                    openai.api_key = api_key
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=[
-                            {"role": "system", "content": "You are a real estate document processing expert."},
-                            {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
-                        ],
-                        max_tokens=50,
-                        temperature=0.1
-                    )
-                    response_text = response['choices'][0]['message']['content']
-                    model = response.get('model', 'gpt-3.5-turbo')
-                    usage = response.get('usage')
+                # Use old style API (0.28.1)
+                openai.api_key = api_key
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a real estate document processing expert."},
+                        {"role": "user", "content": "Test successful - RExeli AI is ready for real estate document processing"}
+                    ],
+                    max_tokens=50,
+                    temperature=0.1
+                )
+                response_text = response['choices'][0]['message']['content']
+                model = response.get('model', 'gpt-3.5-turbo')
+                usage = response.get('usage')
                 
                 return jsonify({
                     'success': True,
@@ -537,15 +520,10 @@ class AIServiceServerless:
                 try:
                     import openai
                     
-                    # Try new style initialization
-                    if hasattr(openai, 'OpenAI'):
-                        self.client = openai.OpenAI(api_key=self.api_key)
-                        self._is_new_style = True
-                    else:
-                        # Fallback to old style
-                        openai.api_key = self.api_key
-                        self.client = openai
-                        self._is_new_style = False
+                    # Use old style API (0.28.1)
+                    openai.api_key = self.api_key
+                    self.client = openai
+                    self._is_new_style = False
                         
                 finally:
                     # Restore environment variables
@@ -556,28 +534,18 @@ class AIServiceServerless:
                 pass
     
     def _make_openai_request(self, messages, temperature=None, max_tokens=1500):
-        """Make OpenAI API request"""
+        """Make OpenAI API request using old style API (0.28.1)"""
         if not self.client:
             raise Exception("OpenAI client not available")
         
-        if getattr(self, '_is_new_style', True):
-            # New style (v1.0+)
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature or self.temperature,
-                max_tokens=max_tokens
-            )
-            return response.choices[0].message.content
-        else:
-            # Old style (pre-v1.0)
-            response = self.client.ChatCompletion.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature or self.temperature,
-                max_tokens=max_tokens
-            )
-            return response['choices'][0]['message']['content']
+        # Use old style API (0.28.1)
+        response = self.client.ChatCompletion.create(
+            model=self.model,
+            messages=messages,
+            temperature=temperature or self.temperature,
+            max_tokens=max_tokens
+        )
+        return response['choices'][0]['message']['content']
     
     def classify_document_content(self, text: str) -> Dict[str, Any]:
         """Classify document content using AI"""
