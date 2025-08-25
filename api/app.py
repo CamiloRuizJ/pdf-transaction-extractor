@@ -31,7 +31,7 @@ class ServerlessConfig:
     """Serverless-optimized configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
     FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
-    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB - Increased for real estate PDFs
+    MAX_CONTENT_LENGTH = 25 * 1024 * 1024  # 25MB - Vercel serverless compatible limit
     
     # AI Settings
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -375,20 +375,31 @@ def upload_file():
         return '', 200
     
     try:
-        # Log request details for debugging
+        # Enhanced logging for debugging 413 errors
         content_length = request.headers.get('Content-Length', 'unknown')
         content_type = request.headers.get('Content-Type', 'unknown')
-        app.logger.info(f"Upload request - Content-Length: {content_length}, Content-Type: {content_type}")
+        user_agent = request.headers.get('User-Agent', 'unknown')
+        
+        # Log all relevant request information
+        app.logger.info(f"=== UPLOAD REQUEST START ===")
+        app.logger.info(f"Content-Length: {content_length}")
+        app.logger.info(f"Content-Type: {content_type}")
+        app.logger.info(f"User-Agent: {user_agent[:100]}")  # Truncate long user agents
+        app.logger.info(f"Request URL: {request.url}")
+        app.logger.info(f"Request Method: {request.method}")
+        app.logger.info(f"Flask MAX_CONTENT_LENGTH: {app.config['MAX_CONTENT_LENGTH']} bytes ({app.config['MAX_CONTENT_LENGTH'] // (1024*1024)}MB)")
         
         # Check content length before processing
         if content_length != 'unknown':
             try:
                 request_size = int(content_length)
                 max_size = app.config['MAX_CONTENT_LENGTH']
+                app.logger.info(f"Request size: {request_size} bytes ({request_size / (1024*1024):.1f}MB)")
+                
                 if request_size > max_size:
                     max_size_mb = max_size // (1024*1024)
                     actual_size_mb = request_size / (1024*1024)
-                    app.logger.warning(f"Request size {actual_size_mb:.1f}MB exceeds limit {max_size_mb}MB")
+                    app.logger.error(f"REJECTING: Request size {actual_size_mb:.1f}MB exceeds Flask limit {max_size_mb}MB")
                     return jsonify({
                         'success': False,
                         'error': f'Upload size {actual_size_mb:.1f}MB exceeds maximum allowed size of {max_size_mb}MB',
@@ -398,8 +409,12 @@ def upload_file():
                         'timestamp': datetime.utcnow().isoformat(),
                         'suggestion': 'Please reduce your PDF file size or split it into smaller files'
                     }), 413
+                else:
+                    app.logger.info(f"ACCEPTING: Request size {actual_size_mb:.1f}MB is within Flask limit {max_size_mb}MB")
             except ValueError:
                 app.logger.warning(f"Invalid Content-Length header: {content_length}")
+        else:
+            app.logger.warning("No Content-Length header provided")
         
         # Check if file is provided
         if 'file' not in request.files:
@@ -1133,6 +1148,52 @@ def debug_request_info():
     except Exception as e:
         return handle_error(f'Request analysis failed: {str(e)}', 500)
 
+@app.route('/api/test-upload-limit', methods=['POST'])
+def test_upload_limit():
+    """Test endpoint to determine actual upload limits"""
+    try:
+        # Get request size information
+        content_length = request.headers.get('Content-Length', 'unknown')
+        content_type = request.headers.get('Content-Type', 'unknown')
+        
+        app.logger.info(f"=== TEST UPLOAD LIMIT REQUEST ===")
+        app.logger.info(f"Content-Length: {content_length}")
+        app.logger.info(f"Content-Type: {content_type}")
+        
+        # If file is provided, get its size
+        file_size = 0
+        if 'file' in request.files:
+            file = request.files['file']
+            if file and file.filename:
+                # Get file size by seeking to end
+                file.seek(0, 2)  # Seek to end
+                file_size = file.tell()
+                file.seek(0)  # Reset to beginning
+                
+                app.logger.info(f"File size: {file_size} bytes ({file_size / (1024*1024):.1f}MB)")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Upload limit test successful',
+            'request_info': {
+                'content_length_header': content_length,
+                'content_type': content_type,
+                'actual_file_size_bytes': file_size,
+                'actual_file_size_mb': round(file_size / (1024*1024), 2) if file_size > 0 else 0,
+                'flask_limit_mb': app.config['MAX_CONTENT_LENGTH'] // (1024*1024),
+                'timestamp': datetime.utcnow().isoformat()
+            },
+            'limits': {
+                'flask_max_content_length': app.config['MAX_CONTENT_LENGTH'],
+                'flask_max_content_length_mb': app.config['MAX_CONTENT_LENGTH'] // (1024*1024),
+                'estimated_vercel_limit': '25-28MB based on platform documentation'
+            }
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Test upload limit failed: {str(e)}")
+        return handle_error(f'Upload limit test failed: {str(e)}', 500)
+
 # AI Service Functions
 def get_ai_service():
     """Get AI service instance with improved error handling"""
@@ -1760,24 +1821,61 @@ def too_large(error):
     """Enhanced 413 error handler with detailed information"""
     max_size_mb = app.config['MAX_CONTENT_LENGTH'] // (1024*1024)
     
-    # Log the 413 error for debugging
-    app.logger.error(f"413 Request Entity Too Large - Max allowed: {max_size_mb}MB")
-    app.logger.error(f"Request headers: {dict(request.headers) if request else 'No request context'}")
+    # Enhanced logging for 413 errors
+    app.logger.error(f"=== 413 REQUEST ENTITY TOO LARGE ===")
+    app.logger.error(f"Flask MAX_CONTENT_LENGTH: {max_size_mb}MB")
     
-    return jsonify({
+    if request:
+        content_length = request.headers.get('Content-Length', 'unknown')
+        content_type = request.headers.get('Content-Type', 'unknown')
+        
+        app.logger.error(f"Request Content-Length: {content_length}")
+        app.logger.error(f"Request Content-Type: {content_type}")
+        app.logger.error(f"Request URL: {request.url}")
+        app.logger.error(f"Request Method: {request.method}")
+        
+        # Calculate actual size if available
+        if content_length != 'unknown':
+            try:
+                actual_size_bytes = int(content_length)
+                actual_size_mb = actual_size_bytes / (1024*1024)
+                app.logger.error(f"Actual request size: {actual_size_mb:.1f}MB")
+            except ValueError:
+                app.logger.error(f"Invalid Content-Length: {content_length}")
+        
+        app.logger.error(f"Full request headers: {dict(request.headers)}")
+    else:
+        app.logger.error("No request context available")
+    
+    # Check if this might be a Vercel platform limit
+    is_likely_vercel_limit = True  # Since we're on Vercel
+    
+    error_response = {
         'success': False,
-        'error': f'Request too large. Maximum file size allowed is {max_size_mb}MB.',
+        'error': f'File upload failed: Request too large. Maximum file size is {max_size_mb}MB.',
         'error_type': 'request_too_large',
+        'error_code': 413,
         'max_size_mb': max_size_mb,
         'timestamp': datetime.utcnow().isoformat(),
-        'suggestion': 'Please reduce your file size or use the chunked upload feature.',
-        'vercel_limit_info': 'This error may be caused by Vercel platform limits. For files larger than 25MB, consider using direct cloud storage uploads.',
-        'support_info': {
-            'chunked_upload': '/api/upload-chunk',
-            'file_size_check': '/api/check-file-size',
-            'max_recommended_size': '25MB for optimal performance'
+        'platform': 'vercel_serverless',
+        'suggestions': [
+            f'Reduce your PDF file size to under {max_size_mb}MB',
+            'Compress your PDF using online tools',
+            'Split large documents into smaller files'
+        ]
+    }
+    
+    if is_likely_vercel_limit:
+        error_response['vercel_info'] = {
+            'platform_limit': 'Vercel serverless functions have payload size limits',
+            'recommendation': f'Files over {max_size_mb}MB may require chunked upload or direct cloud storage',
+            'alternative_endpoints': {
+                'chunked_upload': '/api/upload-chunk',
+                'size_check': '/api/check-file-size'
+            }
         }
-    }), 413
+    
+    return jsonify(error_response), 413
 
 # Serverless handler for Vercel
 def handler(request, context):
