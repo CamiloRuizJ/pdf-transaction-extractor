@@ -4,10 +4,11 @@
 # Core Flask and Web Framework
 Flask==3.0.0
 Flask-CORS==4.0.0
+Flask-Limiter==3.5.0
 Werkzeug==3.0.0
 
-# AI and Machine Learning - Core
-openai==0.28.1
+# AI and Machine Learning - Core (Pin to specific version to avoid compatibility issues)
+openai==1.51.0
 tenacity==8.2.3
 
 # PDF Processing (Serverless Compatible)
