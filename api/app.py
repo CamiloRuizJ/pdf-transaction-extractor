@@ -1530,6 +1530,13 @@ def get_ai_service():
             print("AI service created but no client available, using fallback BasicAIService")
             return BasicAIService()
             
+    except TypeError as e:
+        error_msg = str(e)
+        print(f"Failed to create AI service - TypeError: {error_msg}")
+        if 'proxies' in error_msg or 'proxy' in error_msg:
+            print("DETECTED: Proxy-related initialization error - this should now be fixed")
+        print("Using fallback BasicAIService")
+        return BasicAIService()
     except Exception as e:
         print(f"Failed to create AI service: {str(e)}")
         print(f"Exception type: {type(e).__name__}")
@@ -1665,6 +1672,7 @@ class AIServiceServerless:
         self.model = model
         self.temperature = temperature
         self.client = None
+        self.client_version = None
         
         # Initialize OpenAI client for serverless environment
         if self.api_key:
@@ -1685,8 +1693,15 @@ class AIServiceServerless:
                 openai_version = getattr(openai, '__version__', '0.0.0')
                 print(f"OpenAI package version: {openai_version}")
                 
-                # Force use of old API (v0.28.1) to avoid proxy issues completely
-                self._init_old_api(openai)
+                # Try new API first (v1.0+), then fall back to old API
+                if hasattr(openai, 'OpenAI'):
+                    success = self._init_new_api(openai)
+                    if not success:
+                        print("New API initialization failed, trying old API...")
+                        self._init_old_api(openai)
+                else:
+                    print("New API not available, using old API...")
+                    self._init_old_api(openai)
                 
                 # Restore any proxy environment variables
                 for var, value in original_proxy_values.items():
@@ -1703,6 +1718,32 @@ class AIServiceServerless:
             print("No OpenAI API key provided - using fallback service")
             self.client = None
     
+    def _init_new_api(self, openai):
+        """Initialize new OpenAI API (v1.0+ style) without problematic parameters"""
+        try:
+            # Only pass supported parameters for the new API
+            client_kwargs = {
+                'api_key': self.api_key
+            }
+            
+            # DO NOT pass 'proxies' or other unsupported parameters
+            # The new client handles proxy settings through environment variables or system settings
+            
+            self.client = openai.OpenAI(**client_kwargs)
+            self.client_version = "new"
+            print(f"OpenAI client initialized successfully (v1.0+ API)")
+            return True
+            
+        except TypeError as e:
+            error_msg = str(e)
+            print(f"New API initialization failed with TypeError: {error_msg}")
+            if 'proxies' in error_msg:
+                print("Detected proxies parameter error - this fix should resolve it")
+            return False
+        except Exception as e:
+            print(f"New API initialization failed: {str(e)}")
+            return False
+    
     def _init_old_api(self, openai):
         """Initialize old OpenAI API (v0.28.1 style)"""
         try:
@@ -1710,9 +1751,11 @@ class AIServiceServerless:
             self.client = openai
             self.client_version = "old"
             print(f"OpenAI client initialized successfully (v0.28.1 API)")
+            return True
         except Exception as e:
             print(f"Old API initialization failed: {str(e)}")
             self.client = None
+            return False
     
     def _make_openai_request(self, messages, temperature=None, max_tokens=1500):
         """Make OpenAI API request supporting both old and new API versions"""
