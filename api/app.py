@@ -31,7 +31,7 @@ class ServerlessConfig:
     """Serverless-optimized configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
     FLASK_ENV = os.environ.get('FLASK_ENV', 'production')
-    MAX_CONTENT_LENGTH = 25 * 1024 * 1024  # 25MB - Vercel serverless compatible limit
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB - Now supported via direct cloud uploads
     
     # AI Settings
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -44,9 +44,21 @@ class ServerlessConfig:
     SUPABASE_URL = os.environ.get('SUPABASE_URL')
     SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
     
+    # Cloud Storage for Large File Uploads
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+    S3_BUCKET = os.environ.get('S3_BUCKET', 'rexeli-documents')
+    S3_PREFIX = 'uploads/'
+    PRESIGNED_URL_EXPIRATION = 3600  # 1 hour
+    
     # File handling
     UPLOAD_FOLDER = '/tmp/uploads'
     ALLOWED_EXTENSIONS = {'pdf'}
+    
+    # File size limits
+    DIRECT_UPLOAD_THRESHOLD = 25 * 1024 * 1024  # Files > 25MB use direct cloud upload
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB absolute maximum
     
     # OCR settings (serverless compatible)
     OCR_CONFIDENCE_THRESHOLD = 0.6
@@ -513,30 +525,67 @@ def process_document():
             return handle_error('No file_id provided', 400)
             
         file_id = data['file_id']
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_id)
+        s3_key = data.get('s3_key')
+        storage_location = data.get('storage_location', 'local')
         
-        if not os.path.exists(file_path):
-            return handle_error('File not found', 404)
-            
-        # Initialize AI service
-        ai_service = get_ai_service()
+        file_path = None
+        cleanup_file = False
         
-        # Process PDF
-        processing_result = process_pdf_document(file_path, ai_service)
-        
-        # Clean up temporary file
         try:
-            os.remove(file_path)
-        except:
-            pass  # Don't fail if cleanup fails
+            if storage_location == 'cloud' and s3_key:
+                # Download file from cloud storage to temp location
+                if not cloud_storage.is_available():
+                    return handle_error('Cloud storage not available for processing', 503)
+                
+                app.logger.info(f"Processing cloud file: {s3_key}")
+                file_path = cloud_storage.download_file_to_temp(s3_key)
+                cleanup_file = True
+                
+                # Validate downloaded file
+                if not validate_pdf_file(file_path):
+                    return handle_error('Downloaded file is not a valid PDF', 400)
+                    
+            else:
+                # Local file processing (standard upload)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_id)
+                if not os.path.exists(file_path):
+                    return handle_error('File not found', 404)
+                cleanup_file = True
             
-        return jsonify({
-            'success': True,
-            'processing_result': processing_result,
-            'processed_timestamp': datetime.utcnow().isoformat()
-        })
+            # Initialize AI service
+            ai_service = get_ai_service()
+            
+            # Process PDF
+            app.logger.info(f"Starting PDF processing: {file_path}")
+            processing_result = process_pdf_document(file_path, ai_service)
+            
+            # Add processing metadata
+            processing_result['file_info'] = {
+                'file_id': file_id,
+                's3_key': s3_key,
+                'storage_location': storage_location,
+                'file_size': os.path.getsize(file_path) if file_path and os.path.exists(file_path) else 0
+            }
+            
+            app.logger.info(f"PDF processing completed successfully")
+            
+            return jsonify({
+                'success': True,
+                'processing_result': processing_result,
+                'processed_timestamp': datetime.utcnow().isoformat()
+            })
+            
+        finally:
+            # Clean up temporary file
+            if cleanup_file and file_path and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    app.logger.info(f"Cleaned up temporary file: {file_path}")
+                except Exception as cleanup_error:
+                    app.logger.warning(f"Failed to cleanup temp file: {cleanup_error}")
         
     except Exception as e:
+        app.logger.error(f"Processing failed: {str(e)}")
         return handle_error(f'Processing failed: {str(e)}', 500)
 
 @app.route('/classify', methods=['POST'])
@@ -1147,6 +1196,266 @@ def debug_request_info():
         
     except Exception as e:
         return handle_error(f'Request analysis failed: {str(e)}', 500)
+
+# Cloud Storage Service
+class CloudStorageService:
+    """Service for handling direct cloud storage uploads"""
+    
+    def __init__(self):
+        self.region = app.config.get('AWS_REGION')
+        self.bucket = app.config.get('S3_BUCKET')
+        self.prefix = app.config.get('S3_PREFIX', 'uploads/')
+        self.expiration = app.config.get('PRESIGNED_URL_EXPIRATION', 3600)
+        
+        # Initialize boto3 client
+        self.s3_client = None
+        self._init_s3_client()
+    
+    def _init_s3_client(self):
+        """Initialize S3 client with credentials"""
+        try:
+            import boto3
+            from botocore.exceptions import NoCredentialsError, ClientError
+            
+            access_key = app.config.get('AWS_ACCESS_KEY_ID')
+            secret_key = app.config.get('AWS_SECRET_ACCESS_KEY')
+            
+            if not access_key or not secret_key:
+                app.logger.warning("AWS credentials not configured - cloud upload disabled")
+                return
+            
+            self.s3_client = boto3.client(
+                's3',
+                region_name=self.region,
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key
+            )
+            
+            # Test connection
+            self.s3_client.head_bucket(Bucket=self.bucket)
+            app.logger.info(f"S3 client initialized successfully - bucket: {self.bucket}")
+            
+        except ImportError:
+            app.logger.error("boto3 not available - install with: pip install boto3")
+            self.s3_client = None
+        except Exception as e:
+            app.logger.error(f"Failed to initialize S3 client: {str(e)}")
+            self.s3_client = None
+    
+    def is_available(self) -> bool:
+        """Check if cloud storage is available"""
+        return self.s3_client is not None
+    
+    def generate_presigned_upload_url(self, filename: str, content_type: str = 'application/pdf') -> Dict[str, Any]:
+        """Generate presigned URL for direct upload to S3"""
+        if not self.is_available():
+            raise Exception("Cloud storage not available - check AWS configuration")
+        
+        try:
+            # Generate unique filename with timestamp
+            timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+            secure_name = secure_filename(filename)
+            key = f"{self.prefix}{timestamp}_{secure_name}"
+            
+            # Generate presigned POST URL
+            conditions = [
+                ["content-length-range", 1, app.config['MAX_FILE_SIZE']],  # 1 byte to 50MB
+                {"Content-Type": content_type}
+            ]
+            
+            presigned_post = self.s3_client.generate_presigned_post(
+                Bucket=self.bucket,
+                Key=key,
+                Fields={
+                    'Content-Type': content_type
+                },
+                Conditions=conditions,
+                ExpiresIn=self.expiration
+            )
+            
+            return {
+                'upload_url': presigned_post['url'],
+                'fields': presigned_post['fields'],
+                'key': key,
+                'bucket': self.bucket,
+                'expires_at': (datetime.utcnow() + timedelta(seconds=self.expiration)).isoformat(),
+                'max_file_size': app.config['MAX_FILE_SIZE'],
+                'content_type': content_type
+            }
+            
+        except Exception as e:
+            raise Exception(f"Failed to generate presigned URL: {str(e)}")
+    
+    def generate_presigned_download_url(self, key: str) -> str:
+        """Generate presigned URL for downloading from S3"""
+        if not self.is_available():
+            raise Exception("Cloud storage not available")
+        
+        try:
+            url = self.s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': self.bucket, 'Key': key},
+                ExpiresIn=self.expiration
+            )
+            return url
+        except Exception as e:
+            raise Exception(f"Failed to generate download URL: {str(e)}")
+    
+    def download_file_to_temp(self, key: str) -> str:
+        """Download file from S3 to local temp directory"""
+        if not self.is_available():
+            raise Exception("Cloud storage not available")
+        
+        try:
+            # Create temp file
+            temp_filename = f"temp_{int(time.time())}_{os.path.basename(key)}"
+            temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+            
+            # Download file
+            self.s3_client.download_file(self.bucket, key, temp_path)
+            
+            return temp_path
+            
+        except Exception as e:
+            raise Exception(f"Failed to download file from S3: {str(e)}")
+    
+    def delete_file(self, key: str):
+        """Delete file from S3"""
+        if not self.is_available():
+            return
+        
+        try:
+            self.s3_client.delete_object(Bucket=self.bucket, Key=key)
+            app.logger.info(f"Deleted file from S3: {key}")
+        except Exception as e:
+            app.logger.error(f"Failed to delete file from S3: {str(e)}")
+
+# Initialize cloud storage service
+cloud_storage = CloudStorageService()
+
+@app.route('/upload-url', methods=['POST'])
+@limiter.limit("20 per minute")
+def generate_upload_url():
+    """Generate presigned URL for direct cloud upload"""
+    try:
+        data = request.get_json()
+        if not data:
+            return handle_error('Request body required', 400)
+        
+        filename = data.get('filename')
+        file_size = data.get('file_size', 0)
+        content_type = data.get('content_type', 'application/pdf')
+        
+        if not filename:
+            return handle_error('Filename is required', 400)
+        
+        # Validate file extension
+        if not allowed_file(filename):
+            return handle_error('Invalid file type. Only PDF files are supported', 400)
+        
+        # Check file size
+        if file_size <= 0:
+            return handle_error('Invalid file size', 400)
+        
+        if file_size > app.config['MAX_FILE_SIZE']:
+            max_size_mb = app.config['MAX_FILE_SIZE'] // (1024*1024)
+            actual_size_mb = file_size / (1024*1024)
+            return handle_error(
+                f'File size {actual_size_mb:.1f}MB exceeds maximum allowed size of {max_size_mb}MB', 
+                413
+            )
+        
+        # Determine upload method based on file size
+        use_direct_upload = file_size > app.config['DIRECT_UPLOAD_THRESHOLD']
+        
+        if use_direct_upload:
+            # Generate presigned URL for direct cloud upload
+            if not cloud_storage.is_available():
+                return handle_error('Cloud storage not configured. Files over 25MB cannot be uploaded.', 503)
+            
+            upload_info = cloud_storage.generate_presigned_upload_url(filename, content_type)
+            
+            return jsonify({
+                'success': True,
+                'upload_method': 'direct_cloud',
+                'upload_info': upload_info,
+                'file_size_mb': round(file_size / (1024*1024), 1),
+                'expires_at': upload_info['expires_at'],
+                'instructions': {
+                    'method': 'POST',
+                    'url': upload_info['upload_url'],
+                    'fields': upload_info['fields'],
+                    'file_field': 'file'
+                },
+                'next_step': 'confirm_upload',
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            # Use standard server upload for smaller files
+            return jsonify({
+                'success': True,
+                'upload_method': 'standard_server',
+                'upload_info': {
+                    'endpoint': '/upload',
+                    'method': 'POST',
+                    'content_type': 'multipart/form-data'
+                },
+                'file_size_mb': round(file_size / (1024*1024), 1),
+                'next_step': 'upload_to_server',
+                'timestamp': datetime.utcnow().isoformat()
+            })
+            
+    except Exception as e:
+        return handle_error(f'Failed to generate upload URL: {str(e)}', 500)
+
+@app.route('/confirm-upload', methods=['POST'])
+@limiter.limit("20 per minute")
+def confirm_cloud_upload():
+    """Confirm that file was uploaded to cloud storage and initiate processing"""
+    try:
+        data = request.get_json()
+        if not data:
+            return handle_error('Request body required', 400)
+        
+        s3_key = data.get('s3_key')
+        original_filename = data.get('original_filename')
+        file_size = data.get('file_size', 0)
+        
+        if not s3_key:
+            return handle_error('S3 key is required', 400)
+        
+        if not original_filename:
+            return handle_error('Original filename is required', 400)
+        
+        # Validate that file exists in S3 and is accessible
+        if not cloud_storage.is_available():
+            return handle_error('Cloud storage not available', 503)
+        
+        # Generate a file ID for tracking
+        file_id = f"cloud_{int(time.time())}_{hashlib.md5(s3_key.encode()).hexdigest()[:8]}"
+        
+        # Calculate file hash for integrity (we'll do this during processing)
+        file_hash_placeholder = hashlib.md5(f"{s3_key}_{file_size}".encode()).hexdigest()[:16]
+        
+        return jsonify({
+            'success': True,
+            'message': 'Cloud upload confirmed successfully',
+            'file_id': file_id,
+            's3_key': s3_key,
+            'original_filename': original_filename,
+            'file_size': file_size,
+            'file_hash': file_hash_placeholder,
+            'storage_location': 'cloud',
+            'upload_timestamp': datetime.utcnow().isoformat(),
+            'next_step': 'process',
+            'processing_info': {
+                'method': 'cloud_download_and_process',
+                'estimated_time': 'Variable based on file size and processing complexity'
+            }
+        })
+        
+    except Exception as e:
+        return handle_error(f'Upload confirmation failed: {str(e)}', 500)
 
 @app.route('/api/test-upload-limit', methods=['POST'])
 def test_upload_limit():

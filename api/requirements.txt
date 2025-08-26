@@ -22,6 +22,10 @@ numpy==1.24.4
 # HTTP and Requests
 requests==2.31.0
 
+# Cloud Storage - AWS S3 Integration
+boto3==1.34.0
+botocore==1.34.0
+
 # Utilities and Configuration
 python-dotenv==1.0.0
 

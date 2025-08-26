@@ -18,7 +18,7 @@ interface FileUploadProps {
 export function FileUpload({
   onFilesSelected,
   maxFiles = 10,
-  maxSize = 25 * 1024 * 1024, // 25MB - Aligned with Vercel serverless limits
+  maxSize = 50 * 1024 * 1024, // 50MB - Now supported via direct cloud upload
   acceptedTypes = ['application/pdf'],
   className
 }: FileUploadProps) {
@@ -105,8 +105,11 @@ export function FileUpload({
                 <p className="text-lg font-medium text-neutral-900 mb-2">
                   Drop PDF files here, or click to select
                 </p>
-                <p className="text-sm text-neutral-500 mb-4">
+                <p className="text-sm text-neutral-500 mb-2">
                   Upload up to {maxFiles} files, max {formatFileSize(maxSize)} each
+                </p>
+                <p className="text-xs text-blue-600 mb-4">
+                  Files over 25MB are uploaded directly to cloud storage for faster processing
                 </p>
                 <Button variant="primary" size="sm">
                   Choose Files
