@@ -249,7 +249,7 @@ class ApiService {
     }
   }
 
-  // Enhanced File Upload with automatic method selection
+  // Enhanced File Upload with automatic method selection and fallback
   async uploadFile(
     file: File, 
     onProgress?: (progress: UploadProgress) => void
@@ -269,56 +269,75 @@ class ApiService {
         throw new Error(validation.error);
       }
 
-      // Get upload URL and method
-      const uploadUrlResponse = await this.getUploadUrl(file);
-      const { upload_method, upload_info, instructions } = uploadUrlResponse.data;
+      // For files larger than 25MB, try direct cloud upload first, then fallback to chunked
+      if (file.size > DIRECT_UPLOAD_THRESHOLD) {
+        try {
+          // Try cloud upload first
+          const uploadUrlResponse = await this.getUploadUrl(file);
+          const { upload_method, upload_info } = uploadUrlResponse.data;
 
-      if (upload_method === 'direct_cloud') {
-        // Use direct cloud upload for large files
-        onProgress?.({
-          fileId: file.name,
-          progress: 0,
-          status: 'uploading',
-          message: 'Preparing cloud upload...',
-        });
+          if (upload_method === 'direct_cloud') {
+            // Use direct cloud upload for large files
+            onProgress?.({
+              fileId: file.name,
+              progress: 0,
+              status: 'uploading',
+              message: 'Preparing cloud upload...',
+            });
 
-        await this.uploadToCloud(file, upload_info, onProgress);
+            await this.uploadToCloud(file, upload_info, onProgress);
 
-        onProgress?.({
-          fileId: file.name,
-          progress: 95,
-          status: 'uploading',
-          message: 'Confirming upload...',
-        });
+            onProgress?.({
+              fileId: file.name,
+              progress: 95,
+              status: 'uploading',
+              message: 'Confirming upload...',
+            });
 
-        // Confirm upload completion
-        const confirmResponse = await this.confirmCloudUpload(
-          upload_info.key,
-          file.name,
-          file.size
-        );
+            // Confirm upload completion
+            const confirmResponse = await this.confirmCloudUpload(
+              upload_info.key,
+              file.name,
+              file.size
+            );
 
-        onProgress?.({
-          fileId: file.name,
-          progress: 100,
-          status: 'completed',
-          message: 'Upload completed successfully',
-        });
+            onProgress?.({
+              fileId: file.name,
+              progress: 100,
+              status: 'completed',
+              message: 'Upload completed successfully',
+            });
 
-        return {
-          success: true,
-          data: {
-            file_id: confirmResponse.data.file_id,
-            s3_key: confirmResponse.data.s3_key,
-            filename: file.name,
-            storage_location: 'cloud',
-            upload_method: 'direct_cloud',
-            next_step: 'process'
-          },
-        };
+            return {
+              success: true,
+              data: {
+                file_id: confirmResponse.data.file_id,
+                s3_key: confirmResponse.data.s3_key,
+                filename: file.name,
+                filepath: confirmResponse.data.file_id, // For compatibility with existing code
+                storage_location: 'cloud',
+                upload_method: 'direct_cloud',
+                next_step: 'process'
+              },
+            };
+          }
+        } catch (cloudError) {
+          console.warn('Cloud upload failed, trying chunked upload:', cloudError);
+          
+          // Fallback to chunked upload for large files
+          onProgress?.({
+            fileId: file.name,
+            progress: 0,
+            status: 'uploading',
+            message: 'Cloud upload unavailable, using chunked upload...',
+          });
+          
+          return await this.uploadFileInChunks(file, 4 * 1024 * 1024, onProgress); // 4MB chunks
+        }
+      }
 
-      } else {
-        // Use standard server upload for smaller files
+      // Use standard server upload for smaller files or if cloud upload wasn't needed
+      try {
         const formData = new FormData();
         formData.append('file', file);
 
@@ -327,8 +346,8 @@ class ApiService {
             'Content-Type': 'multipart/form-data',
           },
           timeout: 300000, // 5 minutes for file uploads
-          maxContentLength: DIRECT_UPLOAD_THRESHOLD, // 25MB for server upload
-          maxBodyLength: DIRECT_UPLOAD_THRESHOLD,
+          maxContentLength: MAX_FILE_SIZE_BYTES,
+          maxBodyLength: MAX_FILE_SIZE_BYTES,
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total && onProgress) {
               const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -355,6 +374,22 @@ class ApiService {
             next_step: 'process'
           },
         };
+      } catch (uploadError: any) {
+        // If we get a 413 error and file is large, try chunked upload
+        if (uploadError?.response?.status === 413 && file.size > 4 * 1024 * 1024) {
+          console.warn('Standard upload failed with 413, trying chunked upload');
+          
+          onProgress?.({
+            fileId: file.name,
+            progress: 0,
+            status: 'uploading',
+            message: 'File too large for standard upload, using chunked upload...',
+          });
+          
+          return await this.uploadFileInChunks(file, 4 * 1024 * 1024, onProgress);
+        }
+        
+        throw uploadError;
       }
     } catch (error) {
       throw error;
@@ -574,17 +609,20 @@ class ApiService {
     }
   }
 
-  // Chunked Upload for extremely large files (future enhancement)
+  // Chunked Upload for large files that can't use direct cloud upload
   async uploadFileInChunks(
     file: File,
-    chunkSize: number = 10 * 1024 * 1024, // 10MB chunks
+    chunkSize: number = 4 * 1024 * 1024, // 4MB chunks to stay well under limits
     onProgress?: (progress: UploadProgress) => void
-  ): Promise<ApiResponse<{ file_id: string; chunks_processed: number }>> {
+  ): Promise<ApiResponse<{ 
+    file_id: string; 
+    filename?: string; 
+    filepath?: string; 
+    storage_location: string;
+    upload_method: string;
+    next_step: string;
+  }>> {
     try {
-      // This is a placeholder for chunked upload implementation
-      // Currently not needed since we support 50MB via direct upload
-      // but can be expanded if larger files are required
-      
       const fileId = `chunked_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const totalChunks = Math.ceil(file.size / chunkSize);
       
@@ -595,19 +633,71 @@ class ApiService {
         message: `Preparing to upload ${totalChunks} chunks...`,
       });
 
-      // For now, delegate to standard upload if file is within our limits
-      if (file.size <= MAX_FILE_SIZE_BYTES) {
-        const result = await this.uploadFile(file, onProgress);
-        return {
-          success: true,
-          data: {
-            file_id: result.data.file_id,
-            chunks_processed: 1
+      let uploadedChunks = 0;
+      
+      // Upload each chunk
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * chunkSize;
+        const end = Math.min(start + chunkSize, file.size);
+        const chunkBlob = file.slice(start, end);
+        
+        // Create form data for this chunk
+        const formData = new FormData();
+        formData.append('chunk', new File([chunkBlob], `chunk_${chunkIndex}.part`));
+        formData.append('chunk_data', JSON.stringify({
+          chunk_number: chunkIndex,
+          total_chunks: totalChunks,
+          file_id: fileId,
+          original_filename: file.name
+        }));
+
+        try {
+          const response = await this.client.post('/upload-chunk', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+            timeout: 60000, // 1 minute per chunk
+            maxContentLength: chunkSize + 1024, // Chunk size + metadata
+            maxBodyLength: chunkSize + 1024,
+          });
+
+          uploadedChunks++;
+          const progress = Math.round((uploadedChunks / totalChunks) * 100);
+          
+          onProgress?.({
+            fileId: file.name,
+            progress,
+            status: 'uploading',
+            message: `Uploaded chunk ${uploadedChunks}/${totalChunks} (${progress}%)`,
+          });
+
+          // Check if upload is complete
+          if (response.data.upload_complete) {
+            onProgress?.({
+              fileId: file.name,
+              progress: 100,
+              status: 'completed',
+              message: 'Chunked upload completed successfully',
+            });
+
+            return {
+              success: true,
+              data: {
+                file_id: response.data.file_id,
+                filename: file.name,
+                filepath: response.data.file_id, // For compatibility
+                storage_location: 'server',
+                upload_method: 'chunked_server',
+                next_step: 'process'
+              }
+            };
           }
-        };
+        } catch (chunkError) {
+          throw new Error(`Failed to upload chunk ${chunkIndex + 1}/${totalChunks}: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}`);
+        }
       }
 
-      throw new Error(`File too large: ${formatFileSize(file.size)}. Maximum supported: ${MAX_FILE_SIZE_MB}MB`);
+      throw new Error('Chunked upload completed but no completion confirmation received');
       
     } catch (error) {
       throw error;

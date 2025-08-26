@@ -85,66 +85,15 @@ export function useFileUpload(): UseFileUploadReturn {
 
     setIsUploading(true);
 
-    // Create file entries
-    const newFiles: UploadedFile[] = filesToUpload.map(file => ({
-      id: crypto.randomUUID(),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: 'uploading' as ProcessingStatus,
-      progress: 0,
-    }));
-
-    setFiles(prevFiles => [...prevFiles, ...newFiles]);
-
     try {
       // Upload files sequentially to avoid overwhelming the server
-      for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i];
-        const fileEntry = newFiles[i];
-
-        try {
-          const result = await apiService.uploadFile(file, (progress: UploadProgress) => {
-            setUploadProgress(prev => ({
-              ...prev,
-              [fileEntry.id]: progress.progress,
-            }));
-            updateFileStatus(fileEntry.id, {
-              progress: progress.progress,
-              status: 'uploading',
-            });
-          });
-
-          if (result.success && result.data) {
-            updateFileStatus(fileEntry.id, {
-              status: 'completed',
-              progress: 100,
-              url: result.data.filepath,
-              preview: result.data.pdf_info?.thumbnail,
-            });
-          } else {
-            throw new Error('Upload failed');
-          }
-        } catch (error) {
-          console.error(`Upload error for ${file.name}:`, error);
-          updateFileStatus(fileEntry.id, {
-            status: 'error',
-            error: error instanceof Error ? error.message : 'Upload failed',
-            progress: 0,
-          });
-        }
-
-        // Clean up progress tracking
-        setUploadProgress(prev => {
-          const newProgress = { ...prev };
-          delete newProgress[fileEntry.id];
-          return newProgress;
-        });
+      for (const file of filesToUpload) {
+        await uploadFile(file);
       }
     } finally {
       setIsUploading(false);
     }
-  }, [updateFileStatus]);
+  }, [uploadFile]);
 
   const removeFile = useCallback((fileId: string) => {
     setFiles(prevFiles => prevFiles.filter(file => file.id !== fileId));

@@ -28,19 +28,35 @@ export function FileUpload({
     // Handle rejected files
     if (rejectedFiles.length > 0) {
       console.error('Rejected files:', rejectedFiles);
-      // You could show a toast notification here
+      rejectedFiles.forEach((rejected: any) => {
+        const file = rejected.file;
+        const fileSize = (file.size / (1024 * 1024)).toFixed(1);
+        const maxSizeMB = (maxSize / (1024 * 1024)).toFixed(0);
+        console.error(`File "${file.name}" (${fileSize}MB) was rejected. Max size: ${maxSizeMB}MB`);
+        
+        if (file.size > maxSize) {
+          alert(`File "${file.name}" is too large (${fileSize}MB). Maximum allowed size is ${maxSizeMB}MB.`);
+        }
+      });
     }
 
     if (acceptedFiles.length > 0) {
+      console.log('Accepted files for upload:', acceptedFiles.map(f => ({ 
+        name: f.name, 
+        size: (f.size / (1024 * 1024)).toFixed(1) + 'MB',
+        type: f.type 
+      })));
+      
       try {
         await uploadFiles(acceptedFiles);
-        // Notify parent component
+        // Notify parent component after successful upload
         onFilesSelected?.(files);
       } catch (error) {
         console.error('Upload failed:', error);
+        alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
-  }, [uploadFiles, files, onFilesSelected]);
+  }, [uploadFiles, files, onFilesSelected, maxSize]);
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
@@ -109,7 +125,7 @@ export function FileUpload({
                   Upload up to {maxFiles} files, max {formatFileSize(maxSize)} each
                 </p>
                 <p className="text-xs text-blue-600 mb-4">
-                  Files over 25MB are uploaded directly to cloud storage for faster processing
+                  Files over 25MB use direct cloud upload to bypass server limits
                 </p>
                 <Button variant="primary" size="sm">
                   Choose Files
