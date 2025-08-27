@@ -15,8 +15,11 @@ export function Layout({ children }: LayoutProps) {
       <footer className="bg-neutral-900 text-white py-8 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center mb-2">
-            <div className="h-6 w-6 bg-primary-500 rounded mr-2"></div>
-            <span className="text-lg font-semibold">RExeli</span>
+            <img 
+              src="/rexeli-logo-footer.svg" 
+              alt="RExeli" 
+              className="h-8 w-auto"
+            />
           </div>
           <p className="text-neutral-400 text-sm">
             AI-Powered Commercial Real Estate Document Processing Platform

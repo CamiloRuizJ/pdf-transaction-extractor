@@ -302,26 +302,43 @@ export function DocumentPreview({
         >
           {documentUrl ? (
             <>
-              <img
-                ref={imageRef}
-                src={documentUrl}
-                alt="Document preview"
-                className="max-w-none"
-                style={{
-                  transform: `translate(${viewerState.panX}px, ${viewerState.panY}px) scale(${viewerState.zoom})`,
-                  transformOrigin: 'top left',
-                  transition: viewerState.isDragging ? 'none' : 'transform 0.1s ease-out',
-                }}
-                onLoad={() => {
-                  setImageLoaded(true);
-                  setImageError(false);
-                }}
-                onError={() => {
-                  setImageError(true);
-                  setImageLoaded(false);
-                }}
-                draggable={false}
-              />
+              {/* Check if URL is a PDF */}
+              {documentUrl.toLowerCase().includes('.pdf') || documentUrl.includes('supabase') ? (
+                <iframe
+                  src={documentUrl}
+                  className="w-full h-full border-0"
+                  title="PDF Preview"
+                  onLoad={() => {
+                    setImageLoaded(true);
+                    setImageError(false);
+                  }}
+                  onError={() => {
+                    setImageError(true);
+                    setImageLoaded(false);
+                  }}
+                />
+              ) : (
+                <img
+                  ref={imageRef}
+                  src={documentUrl}
+                  alt="Document preview"
+                  className="max-w-none"
+                  style={{
+                    transform: `translate(${viewerState.panX}px, ${viewerState.panY}px) scale(${viewerState.zoom})`,
+                    transformOrigin: 'top left',
+                    transition: viewerState.isDragging ? 'none' : 'transform 0.1s ease-out',
+                  }}
+                  onLoad={() => {
+                    setImageLoaded(true);
+                    setImageError(false);
+                  }}
+                  onError={() => {
+                    setImageError(true);
+                    setImageLoaded(false);
+                  }}
+                  draggable={false}
+                />
+              )}
               
               {/* Regions */}
               {showRegions && imageLoaded && regions.map((region) => (

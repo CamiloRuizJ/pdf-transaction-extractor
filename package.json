@@ -23,8 +23,8 @@
     "lint:fix": "cd frontend && npm run lint -- --fix",
     "type-check": "cd frontend && tsc --noEmit",
     "clean": "rm -rf node_modules frontend/node_modules frontend/dist",
-    "start:backend": "python app.py",
-    "start:full": "concurrently \"npm run start:backend\" \"npm run dev\""
+    "start:backend": "echo 'Backend runs via Vercel deployment'",
+    "start:full": "npm run dev"
   },
   "engines": {
     "node": ">=18.0.0",

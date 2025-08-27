@@ -23,6 +23,7 @@
     "clean": "rm -rf dist node_modules/.vite"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.1",
     "@types/react-router-dom": "^5.3.3",
     "axios": "^1.11.0",
     "react": "^18.3.1",

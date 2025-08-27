@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Preview Demo - RExeli</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            margin: 40px; 
+            background: #f8fafc;
+        }
+        .demo-container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 40px; 
+        }
+        .header h1 { 
+            color: #1f2937; 
+            margin-bottom: 8px; 
+        }
+        .header p { 
+            color: #6b7280; 
+        }
+        .demo-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .demo-table th {
+            background: #f9fafb;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .demo-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .demo-table tbody tr:hover {
+            background: #f9fafb;
+        }
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .confidence-high { background: #dcfce7; color: #166534; }
+        .confidence-medium { background: #fef3c7; color: #92400e; }
+        .confidence-low { background: #fee2e2; color: #991b1b; }
+        .doc-type {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .stat-label {
+            color: #6b7280;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        .feature-list {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .feature-list h3 {
+            color: #166534;
+            margin-top: 0;
+        }
+        .feature-list ul {
+            color: #15803d;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="header">
+            <h1>🎯 Excel Preview Feature Demo</h1>
+            <p>See how extracted real estate data appears before Excel export</p>
+        </div>
+
+        <div class="feature-list">
+            <h3>✨ New Excel Preview Features</h3>
+            <ul>
+                <li><strong>Live Preview:</strong> See extracted data in Excel format before downloading</li>
+                <li><strong>Confidence Indicators:</strong> Visual confidence scores for each data field</li>
+                <li><strong>Quality Metrics:</strong> Overall data quality and completeness statistics</li>
+                <li><strong>Sortable & Searchable:</strong> Interactive table with full data management</li>
+                <li><strong>Document Types:</strong> Automatic classification with color-coded badges</li>
+            </ul>
+        </div>
+
+        <h2>Sample Extracted Data Preview</h2>
+        
+        <table class="demo-table">
+            <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Document Type</th>
+                    <th>Confidence</th>
+                    <th>Property Address</th>
+                    <th>Rental Income</th>
+                    <th>Lease Term</th>
+                    <th>Square Footage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>lease_agreement_001.pdf</td>
+                    <td><span class="doc-type">Lease Agreement</span></td>
+                    <td><span class="confidence-badge confidence-high">94%</span></td>
+                    <td>123 Main St, Dallas, TX 75201<br><small style="color: #10b981;">92% confidence</small></td>
+                    <td>$2,850/month<br><small style="color: #10b981;">96% confidence</small></td>
+                    <td>12 months<br><small style="color: #10b981;">98% confidence</small></td>
+                    <td>1,250 sq ft<br><small style="color: #f59e0b;">78% confidence</small></td>
+                </tr>
+                <tr>
+                    <td>rent_roll_q4.pdf</td>
+                    <td><span class="doc-type">Rent Roll</span></td>
+                    <td><span class="confidence-badge confidence-high">89%</span></td>
+                    <td>456 Oak Ave, Austin, TX 78701<br><small style="color: #10b981;">91% confidence</small></td>
+                    <td>$3,200/month<br><small style="color: #10b981;">94% confidence</small></td>
+                    <td>24 months<br><small style="color: #10b981;">87% confidence</small></td>
+                    <td>1,450 sq ft<br><small style="color: #10b981;">89% confidence</small></td>
+                </tr>
+                <tr>
+                    <td>comparable_sales.pdf</td>
+                    <td><span class="doc-type">Comparable Sales</span></td>
+                    <td><span class="confidence-badge confidence-medium">82%</span></td>
+                    <td>789 Pine St, Houston, TX 77002<br><small style="color: #f59e0b;">74% confidence</small></td>
+                    <td>$485,000 (Sale Price)<br><small style="color: #10b981;">95% confidence</small></td>
+                    <td>N/A<br><small style="color: #6b7280;">—</small></td>
+                    <td>1,680 sq ft<br><small style="color: #10b981;">88% confidence</small></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">18</div>
+                <div class="stat-label">Total Fields</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #10b981;">88%</div>
+                <div class="stat-label">Avg Confidence</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color: #3b82f6;">92%</div>
+                <div class="stat-label">Avg Quality</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Clean Records</div>
+            </div>
+        </div>
+
+        <div class="feature-list">
+            <h3>🚀 How It Works in the Live App</h3>
+            <ul>
+                <li><strong>Step 1:</strong> Upload PDFs via the drag & drop interface</li>
+                <li><strong>Step 2:</strong> AI processes documents with real-time progress</li>
+                <li><strong>Step 3:</strong> Excel Preview shows extracted data instantly</li>
+                <li><strong>Step 4:</strong> Download comprehensive Excel report</li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; color: #6b7280; margin-top: 40px;">
+            <strong>Access the live demo at:</strong> 
+            <a href="http://localhost:5173" style="color: #3b82f6;">http://localhost:5173</a>
+        </p>
+    </div>
+</body>
+</html>

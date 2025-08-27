@@ -1,74 +1,19 @@
-# Vercel deployment ignore file
-
-# Development files
-*.pyc
+# Ignore Python cache files
 __pycache__/
+*.pyc
 *.pyo
 *.pyd
 .Python
-env/
-venv/
-.env
-.env.local
-.env.development
-*.log
 
-# Test files
-tests/
-pytest.ini
-.pytest_cache/
-coverage.xml
-.coverage
+# Ignore backup files  
+*.backup
+api/backup/
 
-# Documentation
-README.md
-docs/
-archive/
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Large files and models
-models/
-*.joblib
-*.pkl
-*.model
-
-# Upload directories (will be recreated in serverless)
-uploads/
-temp/
-
-# Node modules (handled separately)
-node_modules/
-frontend/node_modules/
-
-# Build artifacts that should be rebuilt
-frontend/dist/
-*.egg-info/
-
-# Git files
-.git/
-.gitignore
-
-# CI/CD files
-.github/
-railway.json
-render.yaml
-Procfile
-Aptfile
-
-# Local development scripts
-*.bat
-install_*.bat
-start_*.bat
-
-# Logs
+# Ignore logs and uploads
 logs/
+uploads/
 *.log
+
+# Ignore test files
+tests/
+test_*.py

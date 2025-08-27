@@ -1,17 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileUpload } from '../features/FileUpload';
+import { DocumentPreview } from '../features/DocumentPreview';
+import { ExcelPreview } from '../features/ExcelPreview';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { PlayIcon, ArrowDownTrayIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { PlayIcon, ArrowDownTrayIcon, CheckCircleIcon, ClockIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import { useDocumentProcessing } from '../../hooks/useDocumentProcessing';
 import { useExport } from '../../hooks/useExport';
 import { useSystemStatus } from '../../contexts';
+import { useApp } from '../../contexts/AppContext';
+import { apiService } from '../../services/api';
 import { cn } from '../../utils/cn';
 import type { UploadedFile } from '../../types';
 
 export default function ProcessingTool() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [selectedFile, setSelectedFile] = useState<UploadedFile | null>(null);
   const { aiServiceStatus } = useSystemStatus();
+  const { dispatch } = useApp();
   
   const { 
     processingSteps, 
@@ -28,8 +34,43 @@ export default function ProcessingTool() {
     clearExportStatus 
   } = useExport();
 
+  // Fetch system status on component mount
+  useEffect(() => {
+    const fetchSystemStatus = async () => {
+      try {
+        const healthResponse = await apiService.healthCheck();
+        if (healthResponse.success) {
+          dispatch({
+            type: 'SET_AI_SERVICE_STATUS',
+            payload: {
+              configured: healthResponse.data.openai_available || false,
+              model: healthResponse.data.ai_model,
+              status: healthResponse.data.openai_available ? 'connected' : 'disconnected'
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch system status:', error);
+        dispatch({
+          type: 'SET_AI_SERVICE_STATUS',
+          payload: {
+            configured: false,
+            status: 'error'
+          }
+        });
+      }
+    };
+
+    fetchSystemStatus();
+  }, [dispatch]);
+
   const handleFilesSelected = (selectedFiles: UploadedFile[]) => {
     setFiles(selectedFiles);
+    // Auto-select the first completed file for preview
+    const completedFile = selectedFiles.find(f => f.status === 'completed' && f.url);
+    if (completedFile && !selectedFile) {
+      setSelectedFile(completedFile);
+    }
   };
 
   const handleStartProcessing = async () => {
@@ -56,6 +97,7 @@ export default function ProcessingTool() {
 
   const allFilesCompleted = files.length > 0 && files.every(file => file.status === 'completed');
   const hasFiles = files.length > 0;
+  const hasCompletedFiles = files.some(file => file.status === 'completed' && file.url);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -119,23 +161,98 @@ export default function ProcessingTool() {
             <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4">
               <span className="text-primary-600 font-bold">3</span>
             </div>
-            <h3 className="font-semibold text-neutral-900 mb-2">Export Results</h3>
+            <h3 className="font-semibold text-neutral-900 mb-2">Preview & Export</h3>
             <p className="text-sm text-neutral-600">
-              Download your processed data in Excel format
+              Preview extracted data and download Excel report
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* File Upload Section */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Step 1: Upload Documents</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FileUpload onFilesSelected={handleFilesSelected} />
-        </CardContent>
-      </Card>
+      {/* Main Content Grid */}
+      <div className="grid lg:grid-cols-2 gap-8 mb-8">
+        {/* Left Column - File Management */}
+        <div className="space-y-6">
+          {/* File Upload Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 1: Upload Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FileUpload onFilesSelected={handleFilesSelected} />
+            </CardContent>
+          </Card>
+
+          {/* File List with Selection */}
+          {hasFiles && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Uploaded Files</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {files.map((file) => (
+                    <div
+                      key={file.id}
+                      className={cn(
+                        'p-3 rounded border cursor-pointer transition-colors',
+                        selectedFile?.id === file.id 
+                          ? 'border-primary-500 bg-primary-50' 
+                          : 'border-neutral-200 hover:border-neutral-300',
+                        file.status === 'completed' && 'hover:bg-neutral-50'
+                      )}
+                      onClick={() => {
+                        if (file.status === 'completed' && file.url) {
+                          setSelectedFile(file);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-neutral-900 truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-neutral-500">
+                            {file.status === 'completed' ? 'Ready for processing' : file.status}
+                          </p>
+                        </div>
+                        <div className={cn(
+                          'h-2 w-2 rounded-full',
+                          file.status === 'completed' && 'bg-success-500',
+                          file.status === 'uploading' && 'bg-primary-500',
+                          file.status === 'error' && 'bg-error-500'
+                        )} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Column - PDF Preview */}
+        <div className="space-y-6">
+          {hasCompletedFiles ? (
+            <DocumentPreview
+              documentUrl={selectedFile?.url}
+              className="min-h-[600px]"
+            />
+          ) : (
+            <Card className="min-h-[600px]">
+              <CardContent className="flex items-center justify-center h-full">
+                <div className="text-center text-neutral-500">
+                  <svg className="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-lg font-medium mb-2">PDF Preview</p>
+                  <p className="text-sm">Upload and select a PDF to view it here</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
       {/* Processing Controls */}
       {hasFiles && (
@@ -219,11 +336,22 @@ export default function ProcessingTool() {
         </Card>
       )}
 
+      {/* Excel Preview */}
+      {Object.keys(results).length > 0 && (
+        <ExcelPreview 
+          results={Object.values(results)}
+          className="mb-8"
+        />
+      )}
+
       {/* Export Results */}
       {Object.keys(results).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Step 3: Export Results</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowDownTrayIcon className="h-5 w-5" />
+              Step 3: Export Results
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between mb-4">

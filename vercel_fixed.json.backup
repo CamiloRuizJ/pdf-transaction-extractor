@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "name": "rexeli-api",
+  "functions": { 
+    "api/*.py": { 
+      "runtime": "python3.11",
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    { 
+      "source": "/api/(.*)", 
+      "destination": "/api/app_fixed" 
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production"
+  },
+  "build": {
+    "env": {
+      "PYTHON_VERSION": "3.11"
+    }
+  }
+}
