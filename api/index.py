@@ -598,11 +598,28 @@ def classify_document():
                     "content": [
                         {
                             "type": "text",
-                            "text": """Analyze this document and classify its type. Respond with JSON only:
+                            "text": """You are a commercial real estate expert analyzing documents. Classify this real estate document type with high accuracy.
+
+DOCUMENT TYPES TO IDENTIFY:
+- rent_roll: Contains tenant listings, rental rates, lease terms, occupancy data
+- offering_memo: Marketing materials with property details, financial projections, investment highlights
+- lease_agreement: Legal contracts between landlords and tenants with lease terms
+- comparable_sales: Property sales comparisons with prices, cap rates, market data
+- financial_statement: Income statements, cash flow, NOI, expenses, financial performance
+- other: Any document that doesn't fit the above categories
+
+Look for these KEY INDICATORS:
+• Rent Roll: "Tenant", "Monthly Rent", "Lease Exp", "SF", "PSF", "%Occupied"
+• Offering Memo: "Investment Opportunity", "Cap Rate", "NOI", "Offering Price"
+• Lease Agreement: "Lease Agreement", "Landlord", "Tenant", "Term", "Monthly Rent"
+• Comparable Sales: "Sales Price", "Price/SF", "Cap Rate", "Comparable Properties"
+• Financial Statement: "Income", "Expenses", "NOI", "Cash Flow", "P&L"
+
+Respond with JSON only:
 {
   "document_type": "rent_roll|offering_memo|lease_agreement|comparable_sales|financial_statement|other",
   "confidence": 0.95,
-  "reasoning": "Brief explanation"
+  "reasoning": "Detailed explanation based on specific content identified"
 }"""
                         },
                         {
@@ -614,7 +631,7 @@ def classify_document():
                     ]
                 }
             ],
-            max_tokens=300,
+            max_tokens=500,
             temperature=0.1
         )
         
@@ -659,21 +676,65 @@ def suggest_regions():
                     "content": [
                         {
                             "type": "text",
-                            "text": f"""Analyze this {document_type} document and identify important data regions. 
-For each region, provide approximate coordinates (x, y, width, height) as percentages of the document dimensions.
+                            "text": f"""You are a commercial real estate expert analyzing a {document_type} document. Identify ALL important data regions for Excel extraction.
+
+CRITICAL REAL ESTATE DATA TO FIND:
+
+FOR RENT ROLLS:
+- Property address and basic info
+- Tenant names and company information
+- Unit/suite numbers and square footage
+- Monthly rent amounts and rent per SF
+- Lease start/end dates and terms
+- Security deposits and additional charges
+- Occupancy status and vacancy data
+
+FOR OFFERING MEMOS:
+- Property address and description
+- Total rentable square footage
+- Cap rate and NOI figures
+- Purchase price and pricing metrics
+- Tenant information and major tenants
+- Financial highlights and projections
+
+FOR LEASE AGREEMENTS:
+- Property address and unit details
+- Landlord and tenant information
+- Lease term dates and rent amounts
+- Security deposit and fees
+- Square footage and rent per SF
+- Special clauses and conditions
+
+FOR COMPARABLE SALES:
+- Property addresses and details
+- Sale prices and price per SF
+- Cap rates and NOI data
+- Square footage and lot size
+- Sale dates and market conditions
+
+FOR FINANCIAL STATEMENTS:
+- Rental income line items
+- Operating expense categories
+- Net operating income (NOI)
+- Cash flow and return metrics
+- Property taxes and insurance
+
+Provide EXACT coordinates as percentages of document dimensions. Look for tables, lists, and key-value pairs.
+
 Respond with JSON only:
 {{
   "regions": [
     {{
       "id": "unique_id",
-      "label": "Property Address",
-      "type": "text",
+      "label": "Descriptive label (e.g., Tenant Rent Table, Property Address, NOI)",
+      "type": "table|text|number|date",
       "x": 10,
       "y": 20,
       "width": 200,
       "height": 30,
       "confidence": 0.9,
-      "page": 0
+      "page": 0,
+      "priority": "high|medium|low"
     }}
   ]
 }}"""
@@ -737,16 +798,31 @@ def extract_data():
                     "content": [
                         {
                             "type": "text",
-                            "text": f"""Extract specific data from these regions in the document:
+                            "text": f"""You are a commercial real estate data extraction specialist. Extract precise data from these identified regions for Excel export:
+
+REGIONS TO EXTRACT:
 {regions_text}
 
-For each region, extract the actual text/value and return as JSON:
+EXTRACTION GUIDELINES:
+• For CURRENCY: Extract as numbers only (e.g., "1500.00" not "$1,500")
+• For DATES: Use MM/DD/YYYY format
+• For PERCENTAGES: Extract as decimal (e.g., "0.065" for 6.5%)
+• For SQUARE FOOTAGE: Extract numbers only
+• For ADDRESSES: Include full address with suite/unit numbers
+• For TENANT NAMES: Extract company names exactly as written
+• For TABLES: Extract each cell's value separately if the region contains multiple data points
+
+CRITICAL: Each extracted value must be Excel-ready (clean numbers, consistent formatting).
+
+Return JSON with extracted values:
 {{
   "extracted_data": {{
     "region_id_1": {{
-      "value": "extracted text or number",
+      "value": "clean extracted value",
+      "raw_text": "original text if different from value",
       "confidence": 0.95,
-      "type": "text|number|currency|date"
+      "type": "currency|percentage|date|address|name|number|text",
+      "excel_column": "suggested column name for Excel"
     }}
   }}
 }}"""
@@ -797,23 +873,51 @@ def validate_data():
             messages=[
                 {
                     "role": "user",
-                    "content": f"""Validate this extracted data from a {document_type} document:
+                    "content": f"""You are a commercial real estate data validation expert. Validate this extracted {document_type} data for accuracy and completeness:
+
 {json.dumps(extracted_data, indent=2)}
 
-Check for:
-1. Data format correctness
-2. Reasonable values
-3. Missing required fields
-4. Potential errors
+VALIDATION CHECKS FOR COMMERCIAL REAL ESTATE:
+
+RENT ROLL VALIDATION:
+• Monthly rent must be positive numbers
+• Rent per SF should be reasonable ($15-150/SF annually)
+• Lease dates must be valid and logical (start < end)
+• Square footage must be positive
+• Occupancy rates between 0-100%
+
+OFFERING MEMO VALIDATION:
+• Cap rates typically 3-12%
+• NOI must be positive for income properties
+• Price per SF should be market reasonable
+• Financial projections should be logical
+
+LEASE AGREEMENT VALIDATION:
+• Security deposits typically 1-3 months rent
+• Lease terms should be standard (1, 3, 5, 10 years)
+• Rent escalations should be reasonable (2-4% annually)
+
+COMPARABLE SALES VALIDATION:
+• Sale prices must be positive
+• Cap rates should be within market range
+• Price per SF should align with market data
+
+GENERAL VALIDATIONS:
+• Currency values properly formatted
+• Dates in valid format
+• Addresses complete and properly formatted
+• No negative values where impossible
+• Percentages in decimal format (0-1)
 
 Respond with JSON only:
 {{
   "validation": {{
     "is_valid": true,
-    "errors": [],
-    "warnings": ["Warning message if any"],
-    "suggestions": ["Suggestion if any"],
-    "confidence": 0.9
+    "errors": ["Specific error descriptions"],
+    "warnings": ["Data quality concerns"],
+    "suggestions": ["Improvements for Excel export"],
+    "confidence": 0.9,
+    "data_quality_score": 0.85
   }}
 }}"""
                 }
