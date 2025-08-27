@@ -598,15 +598,23 @@ def classify_document():
     try:
         data = request.get_json()
         filepath = data.get('filepath')
+        file_url = data.get('file_url')  # Accept direct URL from frontend
         
-        if not filepath:
-            return handle_error("File path is required", 400)
+        if not filepath and not file_url:
+            return handle_error("File path or file URL is required", 400)
         
         if not openai_client:
             return handle_error("AI service not available", 503)
         
-        # Get file URL
-        file_url = get_file_content(filepath)
+        # Use provided URL or try to get from Supabase
+        if file_url:
+            # Use the direct URL provided by frontend
+            document_url = file_url
+        else:
+            # Fallback to Supabase (if available)
+            if not supabase_client:
+                return handle_error("Classification failed: Supabase client not available", 503)
+            document_url = get_file_content(filepath)
         
         # Use OpenAI vision to classify document
         response = openai_client.chat.completions.create(
@@ -644,7 +652,7 @@ Respond with JSON only:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": file_url
+                                "url": document_url
                             }
                         }
                     ]
@@ -675,16 +683,22 @@ def suggest_regions():
     try:
         data = request.get_json()
         filepath = data.get('filepath')
-        document_type = data.get('documentType', 'unknown')
+        file_url = data.get('file_url')
+        document_type = data.get('document_type', 'unknown')  # Fixed key name
         
-        if not filepath:
-            return handle_error("File path is required", 400)
+        if not filepath and not file_url:
+            return handle_error("File path or file URL is required", 400)
         
         if not openai_client:
             return handle_error("AI service not available", 503)
         
-        # Get file URL
-        file_url = get_file_content(filepath)
+        # Use provided URL or try to get from Supabase
+        if file_url:
+            document_url = file_url
+        else:
+            if not supabase_client:
+                return handle_error("Region detection failed: Supabase client not available", 503)
+            document_url = get_file_content(filepath)
         
         # Use OpenAI vision to identify data regions
         response = openai_client.chat.completions.create(
@@ -761,7 +775,7 @@ Respond with JSON only:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": file_url
+                                "url": document_url
                             }
                         }
                     ]
@@ -790,16 +804,22 @@ def extract_data():
     try:
         data = request.get_json()
         filepath = data.get('filepath')
+        file_url = data.get('file_url')
         regions = data.get('regions', [])
         
-        if not filepath:
-            return handle_error("File path is required", 400)
+        if not filepath and not file_url:
+            return handle_error("File path or file URL is required", 400)
         
         if not openai_client:
             return handle_error("AI service not available", 503)
         
-        # Get file URL
-        file_url = get_file_content(filepath)
+        # Use provided URL or try to get from Supabase
+        if file_url:
+            document_url = file_url
+        else:
+            if not supabase_client:
+                return handle_error("Data extraction failed: Supabase client not available", 503)
+            document_url = get_file_content(filepath)
         
         # Create region descriptions for AI
         region_descriptions = []
@@ -849,7 +869,7 @@ Return JSON with extracted values:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": file_url
+                                "url": document_url
                             }
                         }
                     ]

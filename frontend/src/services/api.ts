@@ -565,10 +565,11 @@ class ApiService {
   }
 
   // Document Classification
-  async classifyDocument(filepath: string): Promise<ApiResponse<{ classification: any }>> {
+  async classifyDocument(fileUrl: string): Promise<ApiResponse<{ classification: any }>> {
     try {
       const response = await this.client.post('/classify-document', {
-        filepath,
+        file_url: fileUrl,  // Pass as file_url instead of filepath
+        filepath: fileUrl,  // Keep filepath for backward compatibility
       });
       
       return {
@@ -582,12 +583,13 @@ class ApiService {
 
   // Region Suggestions
   async suggestRegions(
-    filepath: string, 
+    fileUrl: string, 
     documentType: DocumentType
   ): Promise<ApiResponse<{ regions: any[] }>> {
     try {
       const response = await this.client.post('/suggest-regions', {
-        filepath,
+        file_url: fileUrl,
+        filepath: fileUrl, // Keep for backward compatibility
         document_type: documentType,
       });
       
@@ -602,12 +604,13 @@ class ApiService {
 
   // Data Extraction
   async extractData(
-    filepath: string, 
+    fileUrl: string, 
     regions: any[]
   ): Promise<ApiResponse<{ extracted_data: Record<string, any> }>> {
     try {
       const response = await this.client.post('/extract-data', {
-        filepath,
+        file_url: fileUrl,
+        filepath: fileUrl, // Keep for backward compatibility
         regions,
       });
       
