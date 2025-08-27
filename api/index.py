@@ -88,6 +88,10 @@ if SUPABASE_AVAILABLE and SUPABASE_URL and SUPABASE_ANON_KEY:
 
 # Initialize OpenAI client
 openai_client = None
+logger.info(f"OPENAI_AVAILABLE: {OPENAI_AVAILABLE}")
+logger.info(f"OPENAI_API_KEY present: {bool(OPENAI_API_KEY)}")
+logger.info(f"OPENAI_API_KEY length: {len(OPENAI_API_KEY) if OPENAI_API_KEY else 0}")
+
 if OPENAI_AVAILABLE and OPENAI_API_KEY:
     try:
         openai_client = OpenAI(api_key=OPENAI_API_KEY)
@@ -95,6 +99,11 @@ if OPENAI_AVAILABLE and OPENAI_API_KEY:
     except Exception as e:
         logger.error(f"Failed to initialize OpenAI client: {str(e)}")
         openai_client = None
+else:
+    if not OPENAI_AVAILABLE:
+        logger.warning("OpenAI package not available")
+    if not OPENAI_API_KEY:
+        logger.warning("OPENAI_API_KEY environment variable not found")
 
 def handle_error(message: str, status_code: int = 500) -> Tuple[Dict[str, Any], int]:
     """Simple error handling"""
