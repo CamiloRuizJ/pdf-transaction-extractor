@@ -95,7 +95,7 @@
   "env": {
     "FLASK_ENV": "production",
     "PYTHONPATH": "/var/task:/var/task/api",
-    "OPENAI_MODEL": "gpt-3.5-turbo",
+    "OPENAI_MODEL": "gpt-4o-mini",
     "MAX_CONTENT_LENGTH": "26214400",
     "UPLOAD_TIMEOUT": "300",
     "CHUNK_SIZE": "1048576",
