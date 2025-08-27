@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <!-- Logo Background -->
+  <rect width="800" height="600" fill="#f8fafc"/>
+  
+  <!-- House Icon Stack -->
+  <g transform="translate(200, 80)">
+    <!-- Back document/house -->
+    <path d="M50 120 L50 250 L250 250 L250 120 L200 70 L100 70 Z" fill="none" stroke="#3b82f6" stroke-width="12" rx="20"/>
+    
+    <!-- Middle document/house -->
+    <path d="M75 95 L75 225 L275 225 L275 95 L225 45 L125 45 Z" fill="none" stroke="#3b82f6" stroke-width="12" rx="20"/>
+    
+    <!-- Front document/house with window -->
+    <path d="M100 70 L100 200 L300 200 L300 70 L250 20 L150 20 Z" fill="none" stroke="#3b82f6" stroke-width="12" rx="20"/>
+    
+    <!-- Window (4-pane) -->
+    <g transform="translate(180, 60)">
+      <rect x="0" y="0" width="40" height="40" fill="#3b82f6" rx="2"/>
+      <rect x="0" y="0" width="18" height="18" fill="white" rx="1"/>
+      <rect x="22" y="0" width="18" height="18" fill="white" rx="1"/>
+      <rect x="0" y="22" width="18" height="18" fill="white" rx="1"/>
+      <rect x="22" y="22" width="18" height="18" fill="white" rx="1"/>
+    </g>
+    
+    <!-- House roof line -->
+    <path d="M100 70 L200 20 L300 70" fill="none" stroke="#3b82f6" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- REXELI Text -->
+  <g transform="translate(200, 350)">
+    <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="96" font-weight="bold" fill="#3b82f6" letter-spacing="8">REXELI</text>
+  </g>
+</svg>

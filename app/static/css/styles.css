@@ -173,6 +173,12 @@ a:hover {
   font-size: 1.5rem;
 }
 
+.brand-logo {
+  height: 2.5rem;
+  width: auto;
+  margin-right: var(--spacing-sm);
+}
+
 .ai-badge {
   background: rgba(255, 255, 255, 0.2);
   color: white;

@@ -4,37 +4,16 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install && cd frontend && npm install",
   "functions": {
-    "api/app.py": {
+    "api/index.py": {
       "runtime": "@vercel/python@5.0.0",
       "maxDuration": 300,
-      "memory": 3008,
-      "includeFiles": "api/**"
-    },
-    "api/test_minimal_openai.py": {
-      "runtime": "@vercel/python@5.0.0",
-      "maxDuration": 30,
-      "memory": 512
+      "memory": 1024
     }
-  },
-  "limits": {
-    "duration": 300000
   },
   "rewrites": [
     {
-      "source": "/api/test-minimal-openai",
-      "destination": "/api/test_minimal_openai.py"
-    },
-    {
-      "source": "/api/upload-url",
-      "destination": "/api/app.py"
-    },
-    {
-      "source": "/api/confirm-upload",
-      "destination": "/api/app.py"
-    },
-    {
       "source": "/api/(.*)",
-      "destination": "/api/app.py"
+      "destination": "/api/index.py"
     },
     {
       "source": "/(.*)",
@@ -116,7 +95,10 @@
   "env": {
     "FLASK_ENV": "production",
     "PYTHONPATH": "/var/task:/var/task/api",
-    "OPENAI_MODEL": "gpt-3.5-turbo"
+    "OPENAI_MODEL": "gpt-3.5-turbo",
+    "MAX_CONTENT_LENGTH": "26214400",
+    "UPLOAD_TIMEOUT": "300",
+    "CHUNK_SIZE": "1048576"
   },
   "build": {
     "env": {

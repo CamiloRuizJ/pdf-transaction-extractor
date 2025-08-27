@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/Button';
-import { DocumentTextIcon, Cog6ToothIcon, HeartIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { Cog6ToothIcon, HeartIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import { useSystemStatus } from '../../contexts';
 import { cn } from '../../utils/cn';
 
@@ -20,11 +20,12 @@ export function Header() {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center hover:opacity-80 transition-opacity">
-              <DocumentTextIcon className="h-8 w-8 text-primary-500 mr-3" />
+              <img 
+                src="/rexeli-logo-header.svg" 
+                alt="RExeli" 
+                className="h-10 w-auto mr-3"
+              />
               <div>
-                <h1 className="text-xl font-bold text-neutral-900">
-                  RExeli
-                </h1>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs text-primary-600 font-medium">
                     AI-Powered
