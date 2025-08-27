@@ -185,6 +185,21 @@ def health_check():
         'upload_methods': ['server_upload', 'direct_supabase'] if supabase_client else ['server_upload']
     })
 
+@app.route('/debug-env', methods=['GET'])
+@app.route('/api/debug-env', methods=['GET'])
+def debug_env():
+    """Debug endpoint to check environment variables - REMOVE IN PRODUCTION"""
+    env_debug = {
+        'SUPABASE_URL': SUPABASE_URL[:30] + '...' if SUPABASE_URL else 'NOT_SET',
+        'SUPABASE_ANON_KEY': SUPABASE_ANON_KEY[:20] + '...' if SUPABASE_ANON_KEY else 'NOT_SET',
+        'OPENAI_API_KEY': OPENAI_API_KEY[:20] + '...' if OPENAI_API_KEY else 'NOT_SET',
+        'SUPABASE_AVAILABLE_LIB': SUPABASE_AVAILABLE,
+        'OPENAI_AVAILABLE_LIB': OPENAI_AVAILABLE,
+        'supabase_client_status': 'initialized' if supabase_client else 'not_initialized',
+        'openai_client_status': 'initialized' if openai_client else 'not_initialized'
+    }
+    return jsonify(env_debug)
+
 # Get upload method endpoint
 @app.route('/upload-method', methods=['POST'])
 @app.route('/api/upload-method', methods=['POST'])
