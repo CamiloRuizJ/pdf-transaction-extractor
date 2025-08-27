@@ -90,6 +90,10 @@ if SUPABASE_AVAILABLE and SUPABASE_URL and SUPABASE_ANON_KEY:
 openai_client = None
 logger.info(f"OPENAI_AVAILABLE: {OPENAI_AVAILABLE}")
 logger.info(f"OPENAI_API_KEY present: {bool(OPENAI_API_KEY)}")
+logger.info(f"SUPABASE_AVAILABLE: {SUPABASE_AVAILABLE}")
+logger.info(f"SUPABASE_URL present: {bool(SUPABASE_URL)}")
+logger.info(f"SUPABASE_ANON_KEY present: {bool(SUPABASE_ANON_KEY)}")
+logger.info(f"Supabase client initialized: {supabase_client is not None}")
 logger.info(f"OPENAI_API_KEY length: {len(OPENAI_API_KEY) if OPENAI_API_KEY else 0}")
 
 if OPENAI_AVAILABLE and OPENAI_API_KEY:
