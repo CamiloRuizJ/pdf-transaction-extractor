@@ -302,10 +302,10 @@ class ApiService {
         message: 'Initializing Supabase client...',
       });
 
-      // Import Supabase client dynamically
-      const { createClient } = await import('@supabase/supabase-js');
+      // Import Supabase client using singleton pattern
+      const { getSupabaseClient } = await import('../lib/supabase');
       
-      const supabase = createClient(
+      const supabase = getSupabaseClient(
         uploadInfo.supabase_url,
         uploadInfo.anon_key
       );
@@ -457,9 +457,9 @@ class ApiService {
         try {
           await this.uploadToSupabase(file, upload_info, onProgress);
           
-          // Generate signed URL for PDF viewing
-          const { createClient } = await import('@supabase/supabase-js');
-          const supabase = createClient(
+          // Generate signed URL for PDF viewing using singleton client
+          const { getSupabaseClient } = await import('../lib/supabase');
+          const supabase = getSupabaseClient(
             upload_info.supabase_url,
             upload_info.anon_key
           );
