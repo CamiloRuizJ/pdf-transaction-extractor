@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
-  ZoomInIcon, 
-  ZoomOutIcon,
+  MagnifyingGlassPlusIcon as ZoomInIcon, 
+  MagnifyingGlassMinusIcon as ZoomOutIcon,
   ArrowsPointingOutIcon,
   EyeIcon,
   EyeSlashIcon,
